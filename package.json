@@ -14,16 +14,20 @@
     "e2e": "playwright test",
     "icons": "node scripts/gen-icons.mjs",
     "check": "npm run lint && npm run typecheck && npm test && npm run e2e",
-    "emulators": "firebase emulators:start --only auth,firestore --project demo-caldron"
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-caldron",
+    "test:nuvem": "firebase emulators:exec --only auth,firestore --project demo-caldron \"vitest run --config vitest.nuvem.config.ts\"",
+    "build:emulador": "tsc && vite build --mode emulador"
   },
   "type": "module",
   "private": true,
   "dependencies": {
     "dexie": "^4.4.7",
+    "firebase": "^13.2.0",
     "preact": "^11.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^6.0.0",
     "@playwright/test": "^1.65.0",
     "@preact/preset-vite": "^2.10.6",
     "@testing-library/preact": "^3.2.6",

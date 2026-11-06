@@ -16,7 +16,7 @@ import {
 import type { RepositorioFichas } from '../dados/repositorio';
 import type { prepararImagem } from '../midia/imagem';
 import { formatar } from '../rules/motor';
-import { AbasFicha, Cabecalho, Hora, NaoEncontrada, useFicha } from './comum';
+import { AbasFicha, Cabecalho, Entrada, Hora, NaoEncontrada, useFicha } from './comum';
 import { FormItem } from './FormItem';
 import { Miniatura } from './Miniatura';
 
@@ -59,17 +59,18 @@ export function InventarioTela({ repo, id, prepararImagem }: Props) {
       await repo.salvarItem(novo);
     });
 
-  const mudarMoeda = (moeda: TipoMoeda, texto: string, input: HTMLInputElement) => {
+  const mudarMoeda = (moeda: TipoMoeda, texto: string): boolean => {
     const qtd = Number(texto || 0);
     try {
       const carteira = movimentarMoeda(ficha.carteira, moeda, qtd);
-      if (carteira === ficha.carteira) return;
+      if (carteira === ficha.carteira) return true;
       const nova = { ...ficha, carteira, atualizadoEm: Date.now() };
       setFicha(nova);
       void tentar(() => repo.salvar(nova));
+      return true;
     } catch (e) {
-      input.value = String(quantidadeMoeda(ficha.carteira, moeda));
       setErro((e as Error).message);
+      return false;
     }
   };
 
@@ -198,25 +199,25 @@ export function InventarioTela({ repo, id, prepararImagem }: Props) {
           {MOEDAS.map((m) => (
             <label key={m.id} class="campo">
               <span>{m.nome}</span>
-              <input
+              <Entrada
                 type="number"
                 inputMode="numeric"
                 min={0}
                 step={1}
-                value={ficha.carteira.moedas[m.id]}
-                onChange={(e) => mudarMoeda(m.id, e.currentTarget.value, e.currentTarget)}
+                valor={String(quantidadeMoeda(ficha.carteira, m.id))}
+                onConfirmar={(t) => mudarMoeda(m.id, t)}
               />
             </label>
           ))}
           <label class="campo moeda-alma">
             <span>Moeda d'Alma</span>
-            <input
+            <Entrada
               type="number"
               inputMode="numeric"
               min={0}
               step={1}
-              value={ficha.carteira.alma}
-              onChange={(e) => mudarMoeda('alma', e.currentTarget.value, e.currentTarget)}
+              valor={String(ficha.carteira.alma)}
+              onConfirmar={(t) => mudarMoeda('alma', t)}
             />
           </label>
         </div>

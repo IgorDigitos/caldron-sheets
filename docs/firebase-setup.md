@@ -15,7 +15,8 @@ Passo a passo para o Mestre criar o projeto do Caldron Sheets no Firebase. Usa o
 
 ## 2. Ligar o login com e-mail e senha
 
-1. No menu da esquerda: **Criação** (Build) → **Authentication** → **Vamos começar**.
+1. No menu da esquerda: **Segurança** → **Authentication** → **Vamos começar**.
+   (Não achou? Use **Pesquise produtos** no topo do menu e digite "Authentication".)
 2. Aba **Método de login** → **E-mail/senha**.
 3. Ative **só a primeira chave** ("E-mail/senha"). Deixe "Link do e-mail" desligado.
 4. **Salvar**.
@@ -26,7 +27,8 @@ Passo a passo para o Mestre criar o projeto do Caldron Sheets no Firebase. Usa o
 
 ## 3. Criar o banco (Firestore)
 
-1. Menu da esquerda: **Criação** → **Firestore Database** → **Criar banco de dados**.
+1. Menu da esquerda: **Bancos de dados e armazenamento** → **Firestore Database** →
+   **Criar banco de dados**.
 2. Edição: **Standard** (se perguntar).
 3. Local: **`southamerica-east1` (São Paulo)**. ⚠️ Não dá para mudar depois.
 4. Regras: **Iniciar no modo de produção** (bloqueia tudo; o app manda as regras certas na etapa 5).
@@ -34,8 +36,8 @@ Passo a passo para o Mestre criar o projeto do Caldron Sheets no Firebase. Usa o
 
 ## 4. Registrar o app Web e pegar a configuração
 
-1. Clique na engrenagem ⚙️ ao lado de "Visão geral do projeto" → **Configurações do projeto**.
-2. Role até **Seus apps** → clique no ícone **Web** (`</>`).
+1. Na **Visão geral do projeto**, clique em **+ Adicionar app** e escolha **Web** (`</>`).
+   (Ou: **Configurações** no menu → **Configurações do projeto** → **Seus apps** → ícone Web.)
 3. Apelido: `caldron-web`. **Não** marque "Firebase Hosting" agora (fica para a etapa 6).
 4. **Registrar app**.
 5. Vai aparecer um bloco assim:

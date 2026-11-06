@@ -786,3 +786,76 @@ h2 {
 .hist-dano span:first-child {
   color: #f3b2ac;
 }
+
+/* ---------- Etapa 4: conta, sincronização, login ---------- */
+
+#app > .conta {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+#app > .conta .btn-link {
+  min-height: 32px;
+  font-size: 0.875rem;
+}
+
+.status[data-sync='pendente'] {
+  color: var(--accent);
+}
+
+.erro-sync {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 560px;
+  margin: 48px auto 0;
+  padding: 8px 12px;
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  background: #2a1418;
+  color: #f3b2ac;
+  font-size: 0.875rem;
+}
+
+.erro-sync span {
+  flex: 1;
+}
+
+.aviso {
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: left;
+}
+
+.aviso p {
+  margin: 0 0 8px;
+}
+
+.form-login {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+  text-align: left;
+}
+
+.aviso-texto {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  font-size: 0.9375rem;
+}

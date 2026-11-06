@@ -20,11 +20,14 @@ npm run build && npm run preview  # build de produção com service worker
 | `npm run typecheck` | `tsc` em modo estrito |
 | `npm test` | Vitest unitário + componente (jsdom) — `src/**/*.test.ts(x)` |
 | `npm run coverage` | Vitest com cobertura v8 |
-| `npm run e2e` | Playwright (Chromium desktop + Pixel 7) contra o build de produção em `:4173` |
+| `npm run test:nuvem` | Vitest contra o Firebase Emulator: mesma suíte do repositório no Firestore, login e `firestore.rules` |
+| `npm run e2e` | Playwright (Chromium desktop + Pixel 7) contra o build `--mode emulador` em `:4173`, com o emulador junto |
+| `npm run emulators` | Sobe Auth (9099) + Firestore (8080) do emulador, projeto `demo-caldron` |
 | `npm run check` | Tudo acima em sequência — rode antes de abrir PR |
 
 O E2E faz o build sozinho (`webServer` em `playwright.config.ts`) porque o service
-worker só existe no build de produção.
+worker só existe no build de produção. O emulador e o E2E precisam de **Java 21+** no PATH.
+Os testes E2E rodam um por vez (todos limpam e usam o mesmo emulador).
 
 ## Regras do projeto
 
@@ -90,13 +93,33 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
 - Rotas: `#/ficha/<id>`, `#/ficha/<id>/inventario`, `#/ficha/<id>/journal`.
 - Banco Dexie na versão 3 (tabelas `itens`, `imagens`, `journal`; carteira na ficha).
 
+## Nuvem e sincronização (etapa 4)
+
+- Firebase Auth (usuário e senha) + Firestore com cache persistente (IndexedDB). Config pública em
+  `src/nuvem/config.ts`; `.env.emulador` (`VITE_EMULADOR=1`) aponta o build para o emulador.
+- Login: "thainan" vira `thainan@caldron-sheets.invalid`. O **primeiro acesso** cria a conta do Mestre e
+  grava `campanha/config { mestreUid }` — as regras só deixam criar esse documento uma vez.
+- `src/dados/firestore.ts` — `RepositorioFirestore`. **Escrita nunca espera o servidor**: grava no cache,
+  espera só a gravação local (leitura do cache enfileirada depois) e acompanha a confirmação à parte
+  (`observar()` → `EstadoSync { pendentes, gravando, erro }`). Sem rede, lê direto do cache.
+- Coleções no topo: `personagens`, `itens`, `imagens`, `journal` (cada doc com `fichaId`).
+- `firestore.rules` — só o Mestre lê/escreve; **última edição ganha**: atualização com `atualizadoEm`
+  menor que o do servidor é recusada (o aparelho atrasado recebe aviso). Imagens: só data URL
+  webp/jpeg/png < 700KB. Testes em `src/nuvem/regras.nuvem.test.ts`.
+- Campos editáveis que salvam ao sair do campo usam `<Entrada>` (`src/ui/comum.tsx`), que guarda o
+  rascunho: um `<input value>` comum é resetado pelos redesenhos do indicador de sync.
+- Fichas antigas do Dexie: aviso "Enviar para a nuvem" na lista (`src/nuvem/migracao.ts`); o Dexie
+  não é apagado.
+- Publicar regras: `npx firebase deploy --only firestore:rules --project caldron-sheets`.
+
 ## Estrutura
 
 ```
 src/          código do app (Preact)
 src/rules/    motor de fórmulas e preset Caldronis (cobertura mínima 90%)
 src/dominio/  regras da ficha sem tela e sem banco
-src/dados/    repositórios (Dexie hoje, Firestore na etapa 4)
+src/dados/    repositórios (Firestore no app; Dexie para migrar; memória nos testes)
+src/nuvem/    Firebase: config, login, migração, ajudantes de teste do emulador
 src/ui/       componentes de tela
 e2e/          testes Playwright
 scripts/      utilitários (ex.: gen-icons.mjs gera os PNGs a partir de public/icon.svg)

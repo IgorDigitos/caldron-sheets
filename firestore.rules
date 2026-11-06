@@ -1,8 +1,80 @@
 rules_version = '2';
 
-// Etapa 4 ainda não começou: tudo bloqueado. As regras reais (Mestre x Jogador) entram na etapa 5.
+// Etapa 4: só o Mestre lê e escreve. Os papéis de Jogador entram na etapa 5.
+//
+// "Última edição ganha": toda atualização precisa trazer `atualizadoEm` maior ou igual ao que está
+// no servidor. Um aparelho que ficou offline e volta com uma edição mais velha tem a escrita
+// recusada, e o cache dele volta para a versão mais nova do servidor.
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function logado() {
+      return request.auth != null;
+    }
+
+    function caminhoCampanha() {
+      return /databases/$(database)/documents/campanha/config;
+    }
+
+    function ehMestre() {
+      return logado()
+        && exists(caminhoCampanha())
+        && get(caminhoCampanha()).data.mestreUid == request.auth.uid;
+    }
+
+    function idConfere(id) {
+      return request.resource.data.id == id;
+    }
+
+    function naoMaisVelha() {
+      return request.resource.data.atualizadoEm is number
+        && request.resource.data.atualizadoEm >= resource.data.atualizadoEm;
+    }
+
+    function temFicha() {
+      return request.resource.data.fichaId is string;
+    }
+
+    // Quem é o Mestre. Leitura pública (só revela um uid) porque a tela de login precisa saber se a
+    // campanha já tem Mestre. Criado uma única vez, no primeiro acesso, pelo próprio Mestre.
+    match /campanha/config {
+      allow read: if true;
+      allow create: if logado()
+        && request.resource.data.mestreUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['mestreUid', 'criadoEm']);
+      allow update, delete: if false;
+    }
+
+    match /personagens/{id} {
+      allow read, delete: if ehMestre();
+      allow create: if ehMestre() && idConfere(id) && request.resource.data.atualizadoEm is number;
+      allow update: if ehMestre() && idConfere(id) && naoMaisVelha();
+    }
+
+    match /itens/{id} {
+      allow read, delete: if ehMestre();
+      allow create: if ehMestre() && idConfere(id) && temFicha() && request.resource.data.atualizadoEm is number;
+      allow update: if ehMestre() && idConfere(id) && temFicha() && naoMaisVelha();
+    }
+
+    match /journal/{id} {
+      allow read, delete: if ehMestre();
+      allow create: if ehMestre() && idConfere(id) && temFicha() && request.resource.data.atualizadoEm is number;
+      allow update: if ehMestre() && idConfere(id) && temFicha() && naoMaisVelha();
+    }
+
+    // Imagens não são editadas: só criadas e apagadas. Limite de tamanho abaixo do 1MB do Firestore.
+    match /imagens/{id} {
+      allow read, delete: if ehMestre();
+      allow create, update: if ehMestre() && idConfere(id) && temFicha()
+        && request.resource.data.dataUrl is string
+        && request.resource.data.dataUrl.size() < 700000
+        && request.resource.data.dataUrl.split(',')[0]
+          in ['data:image/webp;base64', 'data:image/jpeg;base64', 'data:image/png;base64'];
+    }
+
+    // Todo o resto: fechado.
     match /{document=**} {
       allow read, write: if false;
     }

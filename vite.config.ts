@@ -34,11 +34,21 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
+    exclude: ['src/**/*.nuvem.test.ts', 'node_modules/**'],
     setupFiles: ['src/test-setup.ts'],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/**/*.test.{ts,tsx}', 'src/main.tsx', 'src/test-setup.ts'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/main.tsx',
+        'src/test-setup.ts',
+        // Cobertos pelos testes contra o emulador (npm run test:nuvem) e pelo E2E.
+        'src/nuvem/{config,conta,firebase,testeEmulador}.ts',
+        'src/dados/firestore.ts',
+        'src/dados/suiteRepositorio.ts',
+        'src/ui/Sessao.tsx',
+      ],
       thresholds: {
         statements: 70,
         branches: 70,

@@ -1,15 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
+import { abrirComoNovoMestre, esperarServiceWorker, limparEmulador, recarregar } from './ajuda';
 
-async function esperarServiceWorker(page: Page) {
-  await page.evaluate(async () => {
-    await navigator.serviceWorker.ready;
-    if (!navigator.serviceWorker.controller) {
-      await new Promise((resolve) =>
-        navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }),
-      );
-    }
-  });
-}
+test.beforeEach(limparEmulador);
 
 async function aplicar(page: Page, recurso: string, valor: string, botao: string) {
   const secao = page.getByRole('region', { name: recurso });
@@ -18,7 +10,7 @@ async function aplicar(page: Page, recurso: string, valor: string, botao: string
 }
 
 test('dano e cura funcionam offline e continuam lá depois de reabrir', async ({ page, context }) => {
-  await page.goto('/');
+  await abrirComoNovoMestre(page);
   await esperarServiceWorker(page);
 
   await page.getByRole('button', { name: 'Criar Skar de exemplo' }).click();
@@ -35,7 +27,7 @@ test('dano e cura funcionam offline e continuam lá depois de reabrir', async ({
   await expect(page.getByTestId('valor-STA')).toHaveText('15 / 20');
 
   // "Fecha e reabre" o app ainda sem rede.
-  await page.reload();
+  await recarregar(page);
   await expect(page.getByTestId('status')).toHaveAttribute('data-online', 'false');
   await expect(page.getByTestId('valor-VIDA')).toHaveText('37 / 45');
   await expect(page.getByTestId('valor-STA')).toHaveText('15 / 20');
@@ -59,7 +51,7 @@ test('funciona aberto pelo IP da rede (sem crypto.randomUUID, como em http://192
   const erros: string[] = [];
   page.on('pageerror', (e) => erros.push(e.message));
 
-  await page.goto('/');
+  await abrirComoNovoMestre(page);
   await page.getByRole('button', { name: 'Criar Skar de exemplo' }).click();
   await expect(page.getByRole('heading', { name: 'Skar Lionet' })).toBeVisible();
   await aplicar(page, 'Vida', '8', 'Dano');
@@ -68,20 +60,20 @@ test('funciona aberto pelo IP da rede (sem crypto.randomUUID, como em http://192
 });
 
 test('dano maior que a Vida deixa negativa', async ({ page }) => {
-  await page.goto('/');
+  await abrirComoNovoMestre(page);
   await page.getByRole('button', { name: 'Criar Skar de exemplo' }).click();
   await aplicar(page, 'Vida', '49', 'Dano');
   await expect(page.getByTestId('valor-VIDA')).toHaveText('-4 / 45');
 });
 
 test('editar atributo recalcula e persiste', async ({ page }) => {
-  await page.goto('/');
+  await abrirComoNovoMestre(page);
   await page.getByRole('button', { name: 'Criar Skar de exemplo' }).click();
   await page.getByText('Editar ficha').click();
   await page.getByLabel('Nível').fill('3');
   await page.getByLabel('Nível').press('Tab');
   await expect(page.getByTestId('valor-VIDA')).toHaveText('45 / 50');
-  await page.reload();
+  await recarregar(page);
   await expect(page.getByTestId('valor-VIDA')).toHaveText('45 / 50');
   const alteracoes = page.getByRole('region', { name: 'Alterações de atributos' });
   await expect(alteracoes).toContainText('Nível 2 → 3');
