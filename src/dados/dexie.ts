@@ -1,9 +1,15 @@
 import Dexie, { type EntityTable } from 'dexie';
 import type { Ficha } from '../dominio/ficha';
-import { resumir, type RepositorioFichas, type ResumoFicha } from './repositorio';
+import { carteiraVazia, type Item } from '../dominio/inventario';
+import type { EntradaJournal } from '../dominio/journal';
+import type { Imagem } from '../midia/imagem';
+import { resumir, type PacoteFicha, type RepositorioFichas, type ResumoFicha } from './repositorio';
 
 class BancoCaldron extends Dexie {
   fichas!: EntityTable<Ficha, 'id'>;
+  itens!: EntityTable<Item, 'id'>;
+  imagens!: EntityTable<Imagem, 'id'>;
+  journal!: EntityTable<EntradaJournal, 'id'>;
 
   constructor(nome: string) {
     super(nome);
@@ -20,6 +26,22 @@ class BancoCaldron extends Dexie {
           .toCollection()
           .modify((f: Partial<Ficha>) => {
             f.alteracoes ??= [];
+          }),
+      );
+    // v3: inventário, imagens, journal e carteira.
+    this.version(3)
+      .stores({
+        fichas: 'id, nome, atualizadoEm',
+        itens: 'id, fichaId',
+        imagens: 'id, fichaId',
+        journal: 'id, fichaId',
+      })
+      .upgrade((tx) =>
+        tx
+          .table('fichas')
+          .toCollection()
+          .modify((f: Partial<Ficha>) => {
+            f.carteira ??= carteiraVazia();
           }),
       );
   }
@@ -46,7 +68,76 @@ export class RepositorioDexie implements RepositorioFichas {
   }
 
   async excluir(id: string): Promise<void> {
+    const { fichas, itens, imagens, journal } = this.db;
+    await this.db.transaction('rw', [fichas, itens, imagens, journal], () => this.excluirTudo(id));
+  }
+
+  private async excluirTudo(id: string): Promise<void> {
     await this.db.fichas.delete(id);
+    await this.db.itens.where('fichaId').equals(id).delete();
+    await this.db.imagens.where('fichaId').equals(id).delete();
+    await this.db.journal.where('fichaId').equals(id).delete();
+  }
+
+  listarItens(fichaId: string): Promise<Item[]> {
+    return this.db.itens.where('fichaId').equals(fichaId).toArray();
+  }
+
+  async salvarItem(item: Item): Promise<void> {
+    await this.db.itens.put(item);
+  }
+
+  async excluirItem(id: string): Promise<void> {
+    await this.db.itens.delete(id);
+  }
+
+  obterImagem(id: string): Promise<Imagem | undefined> {
+    return this.db.imagens.get(id);
+  }
+
+  async salvarImagem(imagem: Imagem): Promise<void> {
+    await this.db.imagens.put(imagem);
+  }
+
+  async excluirImagem(id: string): Promise<void> {
+    await this.db.imagens.delete(id);
+  }
+
+  listarJournal(fichaId: string): Promise<EntradaJournal[]> {
+    return this.db.journal.where('fichaId').equals(fichaId).toArray();
+  }
+
+  async salvarEntrada(entrada: EntradaJournal): Promise<void> {
+    await this.db.journal.put(entrada);
+  }
+
+  async excluirEntrada(id: string): Promise<void> {
+    await this.db.journal.delete(id);
+  }
+
+  async obterPacote(fichaId: string): Promise<PacoteFicha | undefined> {
+    const { fichas, itens, imagens, journal } = this.db;
+    return this.db.transaction('r', [fichas, itens, imagens, journal], async () => {
+      const ficha = await fichas.get(fichaId);
+      if (!ficha) return undefined;
+      return {
+        ficha,
+        itens: await itens.where('fichaId').equals(fichaId).toArray(),
+        imagens: await imagens.where('fichaId').equals(fichaId).toArray(),
+        journal: await journal.where('fichaId').equals(fichaId).toArray(),
+      };
+    });
+  }
+
+  async gravarPacote(p: PacoteFicha): Promise<void> {
+    const { fichas, itens, imagens, journal } = this.db;
+    await this.db.transaction('rw', [fichas, itens, imagens, journal], async () => {
+      await this.excluirTudo(p.ficha.id);
+      await fichas.put(p.ficha);
+      await itens.bulkPut(p.itens);
+      await imagens.bulkPut(p.imagens);
+      await journal.bulkPut(p.journal);
+    });
   }
 
   fechar(): void {

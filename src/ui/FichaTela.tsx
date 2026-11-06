@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import {
   alterar,
   aplicar,
@@ -23,7 +23,9 @@ import {
   type Derivado,
 } from '../rules/caldronis';
 import { formatar, type ErroCampo } from '../rules/motor';
+import { exportarFicha, nomeArquivo } from '../dados/exportacao';
 import { BarraRecurso } from './BarraRecurso';
+import { AbasFicha, Cabecalho, Hora, NaoEncontrada, useFicha } from './comum';
 
 const HISTORICO_VISIVEL = 6;
 const DERIVADOS_EXIBIDOS = (Object.keys(FORMULAS_CALDRONIS) as Derivado[]).filter(
@@ -36,28 +38,13 @@ interface Props {
 }
 
 export function FichaTela({ repo, id }: Props) {
-  const [ficha, setFicha] = useState<Ficha | null | undefined>(undefined);
+  const [ficha, setFicha] = useFicha(repo, id);
   const [erros, setErros] = useState<ErroCampo[]>([]);
   const [erroSalvar, setErroSalvar] = useState('');
   const [verTodas, setVerTodas] = useState(false);
 
-  useEffect(() => {
-    let vivo = true;
-    repo.obter(id).then((f) => vivo && setFicha(f ?? null));
-    return () => {
-      vivo = false;
-    };
-  }, [repo, id]);
-
   if (ficha === undefined) return <p class="carregando">Carregando…</p>;
-  if (ficha === null) {
-    return (
-      <main class="pagina">
-        <p>Ficha não encontrada.</p>
-        <a href="#/">Voltar</a>
-      </main>
-    );
-  }
+  if (ficha === null) return <NaoEncontrada />;
 
   const salvar = async (nova: Ficha) => {
     setFicha(nova);
@@ -87,24 +74,29 @@ export function FichaTela({ repo, id }: Props) {
     }
   };
 
+  const exportar = async () => {
+    try {
+      const arquivo = await exportarFicha(repo, id);
+      const blob = new Blob([JSON.stringify(arquivo, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nomeArquivo(ficha.nome);
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      setErroSalvar(`Não foi possível exportar: ${(e as Error).message}`);
+    }
+  };
+
   const mudarTexto = (campo: 'nome' | 'raca' | 'classe', valor: string) => {
     void salvar({ ...ficha, [campo]: campo === 'nome' ? valor.trim() || 'Sem nome' : valor, atualizadoEm: Date.now() });
   };
 
   return (
     <main class="pagina ficha">
-      <nav class="topo-ficha">
-        <a href="#/" class="voltar">
-          ← Fichas
-        </a>
-      </nav>
-
-      <header class="cabecalho">
-        <h1>{ficha.nome}</h1>
-        <p class="subtitulo">
-          {[ficha.raca, ficha.classe, `Nível ${ficha.nivel}`].filter(Boolean).join(' · ')}
-        </p>
-      </header>
+      <AbasFicha fichaId={id} aba="ficha" />
+      <Cabecalho ficha={ficha} />
 
       {erroSalvar && (
         <p class="erro" role="alert">
@@ -239,18 +231,16 @@ export function FichaTela({ repo, id }: Props) {
           </tbody>
         </table>
       </details>
+
+      <section class="backup" aria-label="Backup">
+        <h2>Backup</h2>
+        <p class="vazio">Baixa um arquivo com a ficha, os itens (com fotos) e o journal.</p>
+        <button type="button" class="btn btn-secundario" onClick={() => void exportar()}>
+          Exportar ficha (JSON)
+        </button>
+      </section>
     </main>
   );
-}
-
-/** Hora se for hoje; senão, dia/mês e hora (atributos mudam entre sessões). */
-function Hora({ em }: { em: number }) {
-  const d = new Date(em);
-  const hoje = new Date().toDateString() === d.toDateString();
-  const texto = hoje
-    ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-    : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  return <time dateTime={d.toISOString()}>{texto}</time>;
 }
 
 function CampoTexto({ rotulo, valor, onMudar }: { rotulo: string; valor: string; onMudar: (v: string) => void }) {

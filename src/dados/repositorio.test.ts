@@ -5,6 +5,9 @@ import { RepositorioMemoria } from './memoria';
 import type { RepositorioFichas } from './repositorio';
 import Dexie from 'dexie';
 import { aplicar, criarFicha, type Ficha } from '../dominio/ficha';
+import { criarItem } from '../dominio/inventario';
+import { criarEntrada } from '../dominio/journal';
+import type { Imagem } from '../midia/imagem';
 import { SKAR } from '../rules/fixtures/skar';
 
 // A mesma suíte roda em todas as implementações (na etapa 4 entra a do Firestore).
@@ -75,6 +78,72 @@ describe.each(implementacoes)('Repositório %s', (_nome, criar) => {
     expect(await repo.listar()).toEqual([]);
   });
 
+  it('itens: salvar, listar por ficha, excluir', async () => {
+    const repo = criar();
+    const a = criarItem('f1', { nome: 'Corda' });
+    const b = criarItem('f1', { nome: 'Tocha' });
+    await repo.salvarItem(a);
+    await repo.salvarItem(b);
+    await repo.salvarItem(criarItem('f2', { nome: 'De outro' }));
+    expect((await repo.listarItens('f1')).map((i) => i.nome).sort()).toEqual(['Corda', 'Tocha']);
+    await repo.salvarItem({ ...a, qtd: 5 });
+    await repo.excluirItem(b.id);
+    expect(await repo.listarItens('f1')).toEqual([{ ...a, qtd: 5 }]);
+  });
+
+  it('imagens: salvar, obter, excluir', async () => {
+    const repo = criar();
+    const img: Imagem = { id: 'i1', fichaId: 'f1', dataUrl: 'data:image/webp;base64,AA==', tipo: 'image/webp', largura: 1, altura: 1, bytes: 1, criadoEm: 1 };
+    await repo.salvarImagem(img);
+    expect(await repo.obterImagem('i1')).toEqual(img);
+    await repo.excluirImagem('i1');
+    expect(await repo.obterImagem('i1')).toBeUndefined();
+  });
+
+  it('journal: salvar, listar por ficha, excluir', async () => {
+    const repo = criar();
+    const e = criarEntrada('f1', { titulo: 'Sessão 1' });
+    await repo.salvarEntrada(e);
+    await repo.salvarEntrada(criarEntrada('f2', { titulo: 'Outra' }));
+    expect(await repo.listarJournal('f1')).toEqual([e]);
+    await repo.excluirEntrada(e.id);
+    expect(await repo.listarJournal('f1')).toEqual([]);
+  });
+
+  it('excluir a ficha leva junto itens, imagens e journal (e só dela)', async () => {
+    const repo = criar();
+    const f = criarFicha({ nome: 'Skar' });
+    const outra = criarFicha({ nome: 'Outra' });
+    await repo.salvar(f);
+    await repo.salvar(outra);
+    await repo.salvarItem(criarItem(f.id, { nome: 'Corda' }));
+    await repo.salvarItem(criarItem(outra.id, { nome: 'Fica' }));
+    await repo.salvarImagem({ id: 'i1', fichaId: f.id, dataUrl: 'data:image/webp;base64,AA==', tipo: 'image/webp', largura: 1, altura: 1, bytes: 1, criadoEm: 1 });
+    await repo.salvarEntrada(criarEntrada(f.id, { titulo: 'x' }));
+    await repo.excluir(f.id);
+    expect(await repo.listarItens(f.id)).toEqual([]);
+    expect(await repo.obterImagem('i1')).toBeUndefined();
+    expect(await repo.listarJournal(f.id)).toEqual([]);
+    expect(await repo.listarItens(outra.id)).toHaveLength(1);
+  });
+
+  it('pacote: obter e gravar substituindo', async () => {
+    const repo = criar();
+    expect(await repo.obterPacote('nada')).toBeUndefined();
+    const f = criarFicha({ nome: 'Skar' });
+    await repo.salvar(f);
+    const velho = criarItem(f.id, { nome: 'Velho' });
+    await repo.salvarItem(velho);
+    const novo = criarItem(f.id, { nome: 'Novo' });
+    const entrada = criarEntrada(f.id, { titulo: 'x' });
+    await repo.gravarPacote({ ficha: { ...f, nome: 'Skar 2' }, itens: [novo], imagens: [], journal: [entrada] });
+    const p = (await repo.obterPacote(f.id))!;
+    expect(p.ficha.nome).toBe('Skar 2');
+    expect(p.itens).toEqual([novo]);
+    expect(p.journal).toEqual([entrada]);
+    expect(p.imagens).toEqual([]);
+  });
+
   it('o objeto salvo não muda se a ficha em memória mudar depois', async () => {
     const repo = criar();
     const f = criarFicha({ nome: 'X' });
@@ -99,6 +168,25 @@ describe('Dexie migra fichas antigas', () => {
     const lida = await repo.obter(antiga.id!);
     expect(lida!.alteracoes).toEqual([]);
     expect(lida!.atuais.VIDA).toBe(45);
+  });
+
+  it('ficha da versão 2 ganha a carteira vazia e as tabelas novas funcionam', async () => {
+    const nome = `teste-${crypto.randomUUID()}`;
+    const v2 = new Dexie(nome);
+    v2.version(1).stores({ fichas: 'id, nome, atualizadoEm' });
+    v2.version(2).stores({ fichas: 'id, nome, atualizadoEm' });
+    const antiga: Partial<Ficha> = criarFicha({ nome: 'Skar', ...SKAR });
+    delete antiga.carteira;
+    await v2.table('fichas').put(antiga);
+    v2.close();
+
+    const repo = new RepositorioDexie(nome);
+    abertos.push(repo);
+    const lida = await repo.obter(antiga.id!);
+    expect(lida!.carteira.moedas.ouro).toBe(0);
+    expect(lida!.carteira.alma).toBe(0);
+    expect(lida!.alteracoes).toEqual(antiga.alteracoes);
+    expect(await repo.listarItens(antiga.id!)).toEqual([]);
   });
 });
 
