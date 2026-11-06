@@ -21,7 +21,7 @@ Comandos de teste e regras do projeto estão em [AGENTS.md](AGENTS.md).
 
 - [x] 0 · Fundação — PWA, CI, testes
 - [x] 1 · Motor de regras
-- [ ] 2 · Ficha e recursos
+- [x] 2 · Ficha e recursos
 - [ ] 3 · Inventário, imagens e journal
 - [ ] 4 · Nuvem e sincronização
 - [ ] 5 · Papéis e segurança

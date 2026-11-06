@@ -1,15 +1,21 @@
-import { describe, expect, it } from 'vitest';
-import { act, render, screen } from '@testing-library/preact';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/preact';
 import { App } from './app';
+import { RepositorioMemoria } from './dados/memoria';
 
-describe('App (fumaça)', () => {
-  it('mostra o título', () => {
-    render(<App />);
+beforeEach(() => {
+  location.hash = '';
+});
+
+describe('App', () => {
+  it('mostra o título na lista', async () => {
+    render(<App repo={new RepositorioMemoria()} />);
     expect(screen.getByRole('heading', { name: 'Caldron Sheets' })).toBeTruthy();
+    expect(await screen.findByText('Nenhuma ficha ainda.')).toBeTruthy();
   });
 
   it('reage quando a rede cai e volta', () => {
-    render(<App />);
+    render(<App repo={new RepositorioMemoria()} />);
     const status = screen.getByTestId('status');
     act(() => {
       window.dispatchEvent(new Event('offline'));
@@ -19,5 +25,25 @@ describe('App (fumaça)', () => {
       window.dispatchEvent(new Event('online'));
     });
     expect(status.dataset.online).toBe('true');
+  });
+
+  it('criar o Skar abre a ficha dele, e voltar mostra ele na lista', async () => {
+    const repo = new RepositorioMemoria();
+    render(<App repo={repo} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Criar Skar de exemplo' }));
+    expect(await screen.findByRole('heading', { name: 'Skar Lionet' })).toBeTruthy();
+    expect(location.hash).toMatch(/^#\/ficha\//);
+
+    act(() => {
+      location.hash = '/';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    expect(await screen.findByRole('link', { name: /Skar Lionet/ })).toBeTruthy();
+  });
+
+  it('ficha inexistente mostra aviso', async () => {
+    location.hash = '/ficha/nao-existe';
+    render(<App repo={new RepositorioMemoria()} />);
+    expect(await screen.findByText('Ficha não encontrada.')).toBeTruthy();
   });
 });

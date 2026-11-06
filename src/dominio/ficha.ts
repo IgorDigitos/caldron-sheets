@@ -1,0 +1,171 @@
+// Modelo da ficha e as regras de recurso (dano, cura, gasto) — sem tela e sem banco.
+
+import {
+  ATRIBUTOS,
+  calcularCaldronis,
+  type Atributo,
+  type Derivado,
+  type FichaRegras,
+  type ValorAtributo,
+} from '../rules/caldronis';
+import type { ErroCampo } from '../rules/motor';
+
+export const RECURSOS = ['VIDA', 'STA', 'MANA'] as const;
+export type Recurso = (typeof RECURSOS)[number];
+
+export const NOMES_RECURSOS: Record<Recurso, string> = {
+  VIDA: 'Vida',
+  STA: 'Stamina',
+  MANA: 'Mana',
+};
+
+/**
+ * Até onde cada recurso pode cair. Vida pode ficar negativa (decisão do Mestre, 2026-11-06);
+ * o limite exato ainda não foi definido, então por enquanto não há piso.
+ */
+export const PISO: Record<Recurso, number> = {
+  VIDA: -Infinity,
+  STA: 0,
+  MANA: 0,
+};
+
+export type TipoMudanca = 'dano' | 'cura';
+
+export interface EntradaHistorico {
+  id: string;
+  recurso: Recurso;
+  tipo: TipoMudanca;
+  /** Quanto o jogador pediu (sempre positivo). */
+  valor: number;
+  /** Quanto o recurso realmente mudou (ex.: cura limitada pelo máximo). */
+  efetivo: number;
+  em: number;
+}
+
+export const LIMITE_HISTORICO = 20;
+
+export interface Ficha extends FichaRegras {
+  id: string;
+  nome: string;
+  raca: string;
+  classe: string;
+  /** Valores derivados já calculados (Vida máx., STA máx., Corpo…). */
+  maximos: Record<Derivado, number>;
+  atuais: Record<Recurso, number>;
+  historico: EntradaHistorico[];
+  criadoEm: number;
+  atualizadoEm: number;
+}
+
+export type ResultadoFicha = { ok: true; ficha: Ficha } | { ok: false; erros: ErroCampo[] };
+
+export function novoId(): string {
+  return crypto.randomUUID();
+}
+
+function atributosBase(valor: number): Record<Atributo, ValorAtributo> {
+  return Object.fromEntries(ATRIBUTOS.map((a) => [a, { base: valor }])) as Record<Atributo, ValorAtributo>;
+}
+
+/** Ficha nova com os recursos cheios. */
+export function criarFicha(
+  dados: Partial<Pick<Ficha, 'nome' | 'raca' | 'classe' | 'nivel' | 'atributos' | 'ajustes'>> = {},
+  agora = Date.now(),
+): Ficha {
+  const regras: FichaRegras = {
+    nivel: dados.nivel ?? 1,
+    atributos: dados.atributos ?? atributosBase(1),
+    ajustes: dados.ajustes ?? {},
+  };
+  const r = calcularCaldronis(regras);
+  if (!r.ok) throw new Error(`Preset Caldronis inválido: ${r.erros.map((e) => e.mensagem).join('; ')}`);
+  const maximos = r.valores as Record<Derivado, number>;
+  return {
+    id: novoId(),
+    nome: dados.nome?.trim() || 'Sem nome',
+    raca: dados.raca ?? '',
+    classe: dados.classe ?? '',
+    ...regras,
+    maximos,
+    atuais: { VIDA: maximos.VIDA, STA: maximos.STA, MANA: maximos.MANA },
+    historico: [],
+    criadoEm: agora,
+    atualizadoEm: agora,
+  };
+}
+
+/**
+ * Recalcula os máximos depois de mudar nível, atributo ou ajuste.
+ * Se um máximo cair, o atual é cortado para o novo teto; se subir, o atual fica onde está.
+ */
+export function recalcular(ficha: Ficha, agora = Date.now()): ResultadoFicha {
+  const r = calcularCaldronis(ficha);
+  if (!r.ok) return r;
+  const maximos = r.valores as Record<Derivado, number>;
+  const atuais = { ...ficha.atuais };
+  for (const rec of RECURSOS) atuais[rec] = Math.min(atuais[rec], maximos[rec]);
+  return { ok: true, ficha: { ...ficha, maximos, atuais, atualizadoEm: agora } };
+}
+
+export class ValorInvalido extends Error {}
+
+/** Aplica dano (ou gasto) e cura (ou recuperação). Respeita o piso e o máximo de cada recurso. */
+export function aplicar(
+  ficha: Ficha,
+  recurso: Recurso,
+  tipo: TipoMudanca,
+  valor: number,
+  agora = Date.now(),
+): Ficha {
+  if (!Number.isFinite(valor) || valor <= 0) {
+    throw new ValorInvalido('Informe um número maior que zero');
+  }
+  const antes = ficha.atuais[recurso];
+  const max = ficha.maximos[recurso];
+  let depois: number;
+  if (tipo === 'dano') {
+    depois = Math.max(PISO[recurso], antes - valor);
+  } else {
+    // Cura nunca passa do máximo, mas também nunca reduz quem já está acima dele.
+    depois = Math.max(antes, Math.min(max, antes + valor));
+  }
+  const entrada: EntradaHistorico = {
+    id: novoId(),
+    recurso,
+    tipo,
+    valor,
+    efetivo: depois - antes,
+    em: agora,
+  };
+  return {
+    ...ficha,
+    atuais: { ...ficha.atuais, [recurso]: depois },
+    historico: [entrada, ...ficha.historico].slice(0, LIMITE_HISTORICO),
+    atualizadoEm: agora,
+  };
+}
+
+/** Volta todos os recursos para o máximo (descanso longo). */
+export function restaurarTudo(ficha: Ficha, agora = Date.now()): Ficha {
+  return {
+    ...ficha,
+    atuais: { VIDA: ficha.maximos.VIDA, STA: ficha.maximos.STA, MANA: ficha.maximos.MANA },
+    atualizadoEm: agora,
+  };
+}
+
+const ROTULO_TIPO: Record<Recurso, Record<TipoMudanca, string>> = {
+  VIDA: { dano: 'dano', cura: 'cura' },
+  STA: { dano: 'gasto', cura: 'recuperou' },
+  MANA: { dano: 'gasto', cura: 'recuperou' },
+};
+
+export function rotuloAcao(recurso: Recurso, tipo: TipoMudanca): string {
+  return ROTULO_TIPO[recurso][tipo];
+}
+
+/** Ex.: "−8 dano", "+5 cura", "−2 gasto". */
+export function descreverEntrada(e: EntradaHistorico): string {
+  const sinal = e.tipo === 'dano' ? '−' : '+';
+  return `${sinal}${e.valor.toLocaleString('pt-BR')} ${rotuloAcao(e.recurso, e.tipo)}`;
+}
