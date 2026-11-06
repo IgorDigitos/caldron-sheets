@@ -173,6 +173,37 @@ describe('FichaTela', () => {
     expect(within(secao).getByRole('listitem').textContent).toContain(esperado);
   });
 
+  it('exportar baixa um JSON com o nome da ficha', async () => {
+    await montar();
+    const urls: Blob[] = [];
+    URL.createObjectURL = vi.fn((b: Blob) => {
+      urls.push(b);
+      return 'blob:x';
+    });
+    URL.revokeObjectURL = vi.fn();
+    const clique = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      expect(this.download).toBe('skar-lionet.caldron.json');
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Exportar ficha (JSON)' }));
+    await waitFor(() => expect(clique).toHaveBeenCalled());
+    const dados = JSON.parse(await urls[0]!.text());
+    expect(dados).toMatchObject({ formato: 'caldron-sheets', ficha: { nome: 'Skar Lionet' } });
+  });
+
+  it('erro ao exportar aparece', async () => {
+    const { repo } = await montar();
+    vi.spyOn(repo, 'obterPacote').mockRejectedValue(new Error('falhou'));
+    fireEvent.click(screen.getByRole('button', { name: 'Exportar ficha (JSON)' }));
+    expect(await screen.findByText('Não foi possível exportar: falhou')).toBeTruthy();
+  });
+
+  it('abas levam a inventário e journal', async () => {
+    const { ficha } = await montar();
+    expect(screen.getByRole('tab', { name: 'Ficha' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: 'Inventário' }).getAttribute('href')).toBe(`#/ficha/${ficha.id}/inventario`);
+    expect(screen.getByRole('tab', { name: 'Journal' }).getAttribute('href')).toBe(`#/ficha/${ficha.id}/journal`);
+  });
+
   it('erro ao salvar aparece na tela', async () => {
     const repo = new RepositorioMemoria();
     const { ficha } = await montar(repo);

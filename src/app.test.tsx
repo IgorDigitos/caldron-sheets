@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/preact';
-import { App } from './app';
+import { App, rotaParaTela } from './app';
 import { RepositorioMemoria } from './dados/memoria';
+import { criarFicha } from './dominio/ficha';
 
 beforeEach(() => {
   location.hash = '';
@@ -39,6 +40,31 @@ describe('App', () => {
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
     expect(await screen.findByRole('link', { name: /Skar Lionet/ })).toBeTruthy();
+  });
+
+  it.each([
+    ['/', { tela: 'lista' }],
+    ['/ficha/abc-1', { tela: 'ficha', id: 'abc-1' }],
+    ['/ficha/abc-1/inventario', { tela: 'inventario', id: 'abc-1' }],
+    ['/ficha/abc-1/journal', { tela: 'journal', id: 'abc-1' }],
+    ['/ficha/abc-1/outra', { tela: 'lista' }],
+    ['/qualquer', { tela: 'lista' }],
+  ])('rota %s', (rota, esperado) => {
+    expect(rotaParaTela(rota)).toEqual(esperado);
+  });
+
+  it('abre inventário e journal pela rota', async () => {
+    const repo = new RepositorioMemoria();
+    const f = criarFicha({ nome: 'Skar' });
+    await repo.salvar(f);
+    location.hash = `/ficha/${f.id}/inventario`;
+    render(<App repo={repo} />);
+    expect(await screen.findByText('Inventário vazio.')).toBeTruthy();
+    act(() => {
+      location.hash = `/ficha/${f.id}/journal`;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    expect(await screen.findByText('Nenhuma entrada ainda.')).toBeTruthy();
   });
 
   it('ficha inexistente mostra aviso', async () => {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { criarFicha } from '../dominio/ficha';
+import { importarFicha, lerArquivo } from '../dados/exportacao';
 import type { RepositorioFichas, ResumoFicha } from '../dados/repositorio';
 import { SKAR } from '../rules/fixtures/skar';
 
@@ -33,6 +34,24 @@ export function ListaFichas({ repo, navegar }: Props) {
       await repo.salvar(f);
       navegar(`/ficha/${f.id}`);
     });
+
+  const importar = (e: Event) => {
+    const input = e.currentTarget as HTMLInputElement;
+    const arquivo = input.files?.[0];
+    input.value = '';
+    if (!arquivo) return;
+    return tentar('importar o backup', async () => {
+      const dados = lerArquivo(await arquivo.text());
+      const existente = await repo.obter(dados.ficha.id);
+      if (
+        existente &&
+        !confirm(`A ficha de ${existente.nome} já existe neste aparelho. Substituir pelo backup? Isso não pode ser desfeito.`)
+      ) {
+        return;
+      }
+      navegar(`/ficha/${await importarFicha(repo, dados)}`);
+    });
+  };
 
   const excluir = (f: ResumoFicha) =>
     tentar('excluir a ficha', async () => {
@@ -90,6 +109,16 @@ export function ListaFichas({ repo, navegar }: Props) {
         >
           Criar Skar de exemplo
         </button>
+        <label class="btn btn-secundario botao-arquivo">
+          Importar backup (JSON)
+          <input
+            type="file"
+            accept="application/json,.json"
+            class="sr-only"
+            onChange={(e) => void importar(e)}
+            aria-label="Importar backup (JSON)"
+          />
+        </label>
       </div>
     </main>
   );

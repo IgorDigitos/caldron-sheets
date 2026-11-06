@@ -440,3 +440,276 @@ h2 {
   font: inherit;
   cursor: pointer;
 }
+
+/* ---------- Etapa 3: abas, inventário, journal ---------- */
+
+.abas-ficha {
+  display: grid;
+  gap: 12px;
+}
+
+.abas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.aba {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.aba.ativa {
+  background: var(--accent);
+  color: #1b1420;
+}
+
+.largo {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.botao-arquivo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.titulo-secao {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.titulo-secao span {
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.itens,
+.carteira,
+.backup,
+.lista-journal {
+  margin-top: 24px;
+}
+
+.derivados small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.lista-itens {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.item {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.item.equipado {
+  border-color: var(--accent);
+}
+
+.item-abrir {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.item-info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.item-info strong {
+  overflow-wrap: anywhere;
+}
+
+.item-detalhes {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.item-controles {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.qtd {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.qtd .btn-icone {
+  font-size: 1.25rem;
+  color: var(--fg);
+}
+
+.equipar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--muted);
+}
+
+.equipar input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--accent);
+}
+
+.miniatura {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #120d16;
+}
+
+.miniatura.grande {
+  width: 120px;
+  height: 120px;
+}
+
+.miniatura-vazia {
+  border: 1px dashed var(--border);
+}
+
+.foto-item {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.foto-item .miniatura {
+  width: 120px;
+  height: 120px;
+}
+
+.foto-acoes,
+.form-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.foto-acoes .btn {
+  display: flex;
+  align-items: center;
+}
+
+.form-acoes {
+  margin-top: 16px;
+}
+
+.form-item,
+.form-journal {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.campo textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #120d16;
+  color: var(--fg);
+  font: inherit;
+  font-size: 1rem;
+  resize: vertical;
+}
+
+.moedas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+}
+
+.moeda-alma span {
+  color: var(--accent);
+}
+
+.lista-journal {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.lista-journal article {
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.lista-journal header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.lista-journal header .btn-link {
+  margin-left: auto;
+  min-height: 32px;
+}
+
+.sessao {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.lista-journal h3 {
+  margin: 6px 0 0;
+  font-size: 1.0625rem;
+}
+
+.texto-journal {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { RepositorioFichas } from './dados/repositorio';
+import type { Aba } from './ui/comum';
 import { FichaTela } from './ui/FichaTela';
+import { InventarioTela } from './ui/InventarioTela';
+import { JournalTela } from './ui/JournalTela';
 import { ListaFichas } from './ui/ListaFichas';
 
 function useOnline(): boolean {
@@ -25,24 +28,36 @@ function rotaAtual(): string {
 function useRota(): [string, (r: string) => void] {
   const [rota, setRota] = useState(rotaAtual);
   useEffect(() => {
-    const mudou = () => setRota(rotaAtual());
+    const mudou = () => {
+      setRota(rotaAtual());
+      window.scrollTo(0, 0);
+    };
     window.addEventListener('hashchange', mudou);
     return () => window.removeEventListener('hashchange', mudou);
   }, []);
   return [rota, (r) => (location.hash = r)];
 }
 
+export function rotaParaTela(rota: string): { tela: 'lista' } | { tela: Aba; id: string } {
+  const m = /^\/ficha\/([\w-]+)(?:\/(inventario|journal))?$/.exec(rota);
+  if (!m) return { tela: 'lista' };
+  return { tela: (m[2] as Aba | undefined) ?? 'ficha', id: m[1]! };
+}
+
 export function App({ repo }: { repo: RepositorioFichas }) {
   const online = useOnline();
   const [rota, navegar] = useRota();
-  const ficha = /^\/ficha\/([\w-]+)$/.exec(rota);
+  const r = rotaParaTela(rota);
 
   return (
     <>
       <p class="status" data-testid="status" data-online={online}>
         {online ? 'Online' : 'Offline — tudo continua funcionando'}
       </p>
-      {ficha ? <FichaTela key={ficha[1]} repo={repo} id={ficha[1]!} /> : <ListaFichas repo={repo} navegar={navegar} />}
+      {r.tela === 'lista' && <ListaFichas repo={repo} navegar={navegar} />}
+      {r.tela === 'ficha' && <FichaTela key={r.id} repo={repo} id={r.id} />}
+      {r.tela === 'inventario' && <InventarioTela key={r.id} repo={repo} id={r.id} />}
+      {r.tela === 'journal' && <JournalTela key={r.id} repo={repo} id={r.id} />}
     </>
   );
 }
