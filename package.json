@@ -13,7 +13,8 @@
     "coverage": "vitest run --coverage",
     "e2e": "playwright test",
     "icons": "node scripts/gen-icons.mjs",
-    "check": "npm run lint && npm run typecheck && npm test && npm run e2e"
+    "check": "npm run lint && npm run typecheck && npm test && npm run e2e",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-caldron"
   },
   "type": "module",
   "private": true,
@@ -30,6 +31,7 @@
     "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.14.0",
     "fake-indexeddb": "^6.2.7",
+    "firebase-tools": "^15.35.0",
     "globals": "^17.14.0",
     "jsdom": "^29.1.1",
     "typescript": "^6.0.3",
