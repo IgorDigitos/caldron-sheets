@@ -39,6 +39,14 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.test.{ts,tsx}', 'src/main.tsx', 'src/test-setup.ts'],
+      thresholds: {
+        statements: 70,
+        branches: 70,
+        functions: 70,
+        lines: 70,
+        // O motor de regras é onde um erro estraga a mesa inteira.
+        'src/rules/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
+      },
     },
   },
 });
