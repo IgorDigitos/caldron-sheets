@@ -49,6 +49,24 @@ test('dano e cura funcionam offline e continuam lá depois de reabrir', async ({
   await expect(page.getByRole('link', { name: /Skar Lionet/ })).toBeVisible();
 });
 
+test('funciona aberto pelo IP da rede (sem crypto.randomUUID, como em http://192.168.x.x)', async ({
+  page,
+}) => {
+  // Fora de HTTPS/localhost o navegador não oferece randomUUID; simulamos isso.
+  await page.addInitScript(() => {
+    Object.defineProperty(Crypto.prototype, 'randomUUID', { value: undefined });
+  });
+  const erros: string[] = [];
+  page.on('pageerror', (e) => erros.push(e.message));
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Criar Skar de exemplo' }).click();
+  await expect(page.getByRole('heading', { name: 'Skar Lionet' })).toBeVisible();
+  await aplicar(page, 'Vida', '8', 'Dano');
+  await expect(page.getByTestId('valor-VIDA')).toHaveText('37 / 45');
+  expect(erros).toEqual([]);
+});
+
 test('dano maior que a Vida deixa negativa', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Criar Skar de exemplo' }).click();

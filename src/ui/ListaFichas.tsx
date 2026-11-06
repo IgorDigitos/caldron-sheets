@@ -10,28 +10,47 @@ interface Props {
 
 export function ListaFichas({ repo, navegar }: Props) {
   const [fichas, setFichas] = useState<ResumoFicha[] | null>(null);
+  const [erro, setErro] = useState('');
 
-  const carregar = () => repo.listar().then(setFichas);
+  // Nenhum botão falha em silêncio: qualquer erro aparece na tela.
+  const tentar = async (acao: string, fn: () => Promise<void>) => {
+    try {
+      setErro('');
+      await fn();
+    } catch (e) {
+      setErro(`Não foi possível ${acao}: ${(e as Error).message}`);
+    }
+  };
+
+  const carregar = () => tentar('carregar as fichas', async () => setFichas(await repo.listar()));
   useEffect(() => {
     void carregar();
   }, [repo]);
 
-  const criar = async (dados: Parameters<typeof criarFicha>[0]) => {
-    const f = criarFicha(dados);
-    await repo.salvar(f);
-    navegar(`/ficha/${f.id}`);
-  };
+  const criar = (dados: Parameters<typeof criarFicha>[0]) =>
+    tentar('criar a ficha', async () => {
+      const f = criarFicha(dados);
+      await repo.salvar(f);
+      navegar(`/ficha/${f.id}`);
+    });
 
-  const excluir = async (f: ResumoFicha) => {
-    if (!confirm(`Excluir a ficha de ${f.nome}? Isso não pode ser desfeito.`)) return;
-    await repo.excluir(f.id);
-    await carregar();
-  };
+  const excluir = (f: ResumoFicha) =>
+    tentar('excluir a ficha', async () => {
+      if (!confirm(`Excluir a ficha de ${f.nome}? Isso não pode ser desfeito.`)) return;
+      await repo.excluir(f.id);
+      setFichas(await repo.listar());
+    });
 
   return (
     <main class="pagina home">
       <h1>Caldron Sheets</h1>
       <p class="subtitle">Ficha · Inventário · Journal</p>
+
+      {erro && (
+        <p class="erro" role="alert">
+          {erro}
+        </p>
+      )}
 
       {fichas === null ? (
         <p class="carregando">Carregando…</p>

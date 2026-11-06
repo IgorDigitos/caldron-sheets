@@ -4,6 +4,7 @@ import {
   criarFicha,
   descreverEntrada,
   LIMITE_HISTORICO,
+  novoId,
   recalcular,
   restaurarTudo,
   ValorInvalido,
@@ -13,6 +14,33 @@ import { SKAR } from '../rules/fixtures/skar';
 
 const T = 1_700_000_000_000;
 const skar = (): Ficha => criarFicha({ nome: 'Skar Lionet', ...SKAR }, T);
+
+describe('novoId', () => {
+  const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+  it('usa randomUUID quando existe', () => {
+    expect(novoId()).toMatch(UUID_V4);
+  });
+
+  it('funciona sem randomUUID (página aberta pelo IP da rede, sem HTTPS)', () => {
+    const semRandomUUID = { getRandomValues: crypto.getRandomValues.bind(crypto) };
+    const ids = new Set(Array.from({ length: 200 }, () => novoId(semRandomUUID)));
+    expect(ids.size).toBe(200);
+    for (const id of ids) expect(id).toMatch(UUID_V4);
+  });
+
+  it('marca versão e variante mesmo com bytes extremos', () => {
+    const zeros = { getRandomValues: <T extends ArrayBufferView>(a: T) => a };
+    expect(novoId(zeros)).toBe('00000000-0000-4000-8000-000000000000');
+    const cheios = {
+      getRandomValues: <T extends ArrayBufferView>(a: T) => {
+        (a as unknown as Uint8Array).fill(255);
+        return a;
+      },
+    };
+    expect(novoId(cheios)).toBe('ffffffff-ffff-4fff-bfff-ffffffffffff');
+  });
+});
 
 describe('criarFicha', () => {
   it('nasce com os máximos calculados e recursos cheios', () => {

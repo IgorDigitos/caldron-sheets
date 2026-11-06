@@ -27,6 +27,25 @@ describe('ListaFichas', () => {
     expect(await screen.findByText('Humano · Pugilista · Nível 2')).toBeTruthy();
   });
 
+  it('se criar falhar, o erro aparece na tela em vez de não fazer nada', async () => {
+    const repo = new RepositorioMemoria();
+    vi.spyOn(repo, 'salvar').mockRejectedValue(new Error('banco travado'));
+    const navegar = vi.fn();
+    render(<ListaFichas repo={repo} navegar={navegar} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Criar Skar de exemplo' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('Não foi possível criar a ficha: banco travado');
+    expect(navegar).not.toHaveBeenCalled();
+  });
+
+  it('se listar falhar, o erro aparece na tela', async () => {
+    const repo = new RepositorioMemoria();
+    vi.spyOn(repo, 'listar').mockRejectedValue(new Error('sem acesso ao armazenamento'));
+    render(<ListaFichas repo={repo} navegar={() => {}} />);
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Não foi possível carregar as fichas: sem acesso ao armazenamento',
+    );
+  });
+
   it('excluir pede confirmação', async () => {
     const repo = new RepositorioMemoria();
     await repo.salvar(criarFicha({ nome: 'Skar' }));

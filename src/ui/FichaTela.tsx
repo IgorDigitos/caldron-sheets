@@ -83,7 +83,11 @@ export function FichaTela({ repo, id }: Props) {
   };
 
   const aplicarRecurso = (recurso: Recurso, tipo: TipoMudanca, valor: number) => {
-    void salvar(aplicar(ficha, recurso, tipo, valor));
+    try {
+      void salvar(aplicar(ficha, recurso, tipo, valor));
+    } catch (e) {
+      setErroSalvar(`Não foi possível aplicar: ${(e as Error).message}`);
+    }
   };
 
   const mudarTexto = (campo: 'nome' | 'raca' | 'classe', valor: string) => {
