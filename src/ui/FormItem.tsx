@@ -107,18 +107,8 @@ export function FormItem({ repo, fichaId, item, onSalvo, onExcluido, onCancelar,
         )}
         <div class="foto-acoes">
           <label class="btn">
-            Tirar foto
-            <input type="file" accept="image/*" capture="environment" class="sr-only" onChange={escolherFoto} />
-          </label>
-          <label class="btn">
-            Galeria
-            <input
-              type="file"
-              accept="image/*"
-              class="sr-only"
-              onChange={escolherFoto}
-              aria-label="Escolher foto da galeria"
-            />
+            {temFoto ? 'Trocar foto' : 'Adicionar foto'}
+            <input type="file" accept="image/*" class="sr-only" onChange={escolherFoto} aria-label="Escolher foto" />
           </label>
           {temFoto && (
             <button type="button" class="btn" onClick={() => setFoto({ tipo: 'remover' })}>

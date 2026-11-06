@@ -76,7 +76,11 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
 - `src/dominio/inventario.ts` — itens (qtd, peso por unidade, Def.F/Def.M, `equipado`), peso total,
   defesa dos itens (**só equipados**, qtd × defesa) e carteira (valores em cobre: ferro 0,1 … oricalco
   1.000.000; **Moeda d'Alma** é contador à parte, fora do total). Sem limite de carga (decisão do Mestre).
-- `src/dominio/journal.ts` — entradas com data AAAA-MM-DD, título, texto e sessão opcional.
+  Toda mudança de moeda passa por `movimentarMoeda`, que registra de → para em `carteira.historico`
+  (últimas 30).
+- `src/dominio/journal.ts` — entradas com data AAAA-MM-DD, título, texto, sessão opcional e até 6
+  imagens (`imagens`: ids na tabela `imagens`, mesma compressão das fotos de item).
+- Foto de item: só galeria/arquivo (sem botão de câmera, decisão do Mestre).
 - `src/midia/imagem.ts` — foto ≤ 400px de lado e ≤ 150KB em WebP (JPEG se o navegador não tiver
   WebP), guardada como data URL num registro separado do item. `escolherCompressao` é pura e testada
   com codificador falso; a parte de canvas só roda no E2E.

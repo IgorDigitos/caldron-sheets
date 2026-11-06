@@ -9,11 +9,15 @@ export interface EntradaJournal {
   texto: string;
   /** Número da sessão (opcional). */
   sessao?: number;
+  /** Ids das imagens anexadas (registros em `imagens`). Ausente em entradas antigas. */
+  imagens?: string[];
   criadoEm: number;
   atualizadoEm: number;
 }
 
-export type DadosJournal = Partial<Pick<EntradaJournal, 'data' | 'titulo' | 'texto' | 'sessao'>>;
+export type DadosJournal = Partial<Pick<EntradaJournal, 'data' | 'titulo' | 'texto' | 'sessao' | 'imagens'>>;
+
+export const MAX_IMAGENS_ENTRADA = 6;
 
 export class EntradaInvalida extends Error {}
 
@@ -29,12 +33,19 @@ function validar(e: EntradaJournal): EntradaJournal {
   }
   const titulo = e.titulo.trim();
   const texto = e.texto.trim();
-  if (!titulo && !texto) throw new EntradaInvalida('Escreva um título ou um texto');
+  const imagens = e.imagens ?? [];
+  if (!titulo && !texto && imagens.length === 0) {
+    throw new EntradaInvalida('Escreva um título, um texto ou adicione uma imagem');
+  }
+  if (imagens.length > MAX_IMAGENS_ENTRADA) {
+    throw new EntradaInvalida(`No máximo ${MAX_IMAGENS_ENTRADA} imagens por entrada`);
+  }
   if (e.sessao !== undefined && (!Number.isInteger(e.sessao) || e.sessao < 0)) {
     throw new EntradaInvalida('Sessão precisa ser um número inteiro');
   }
   const limpa: EntradaJournal = { ...e, titulo, texto };
   if (limpa.sessao === undefined) delete limpa.sessao;
+  if (imagens.length === 0) delete limpa.imagens;
   return limpa;
 }
 
@@ -46,6 +57,7 @@ export function criarEntrada(fichaId: string, dados: DadosJournal, agora = Date.
     titulo: dados.titulo ?? '',
     texto: dados.texto ?? '',
     sessao: dados.sessao,
+    imagens: dados.imagens,
     criadoEm: agora,
     atualizadoEm: agora,
   });

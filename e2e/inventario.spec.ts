@@ -49,7 +49,7 @@ test('item com foto criado sem rede, comprimido e salvo', async ({ page, context
   await page.getByLabel('Nome').fill('Cota de malha');
   await page.getByLabel('Peso (unidade)').fill('12');
   await page.getByLabel('Def. Física').fill('4');
-  await page.getByLabel('Escolher foto da galeria').setInputFiles({ name: 'foto.png', mimeType: 'image/png', buffer: foto });
+  await page.getByLabel('Escolher foto').setInputFiles({ name: 'foto.png', mimeType: 'image/png', buffer: foto });
 
   const info = page.getByTestId('info-foto');
   await expect(info).toBeVisible({ timeout: 15_000 });
@@ -79,7 +79,7 @@ test('exportar, apagar e importar devolve a mesma ficha', async ({ page }) => {
   await page.getByRole('tab', { name: 'Inventário' }).click();
   await page.getByRole('button', { name: 'Adicionar item' }).click();
   await page.getByLabel('Nome').fill('Lamparina mágica');
-  await page.getByLabel('Escolher foto da galeria').setInputFiles({ name: 'f.png', mimeType: 'image/png', buffer: await fotoGrande(page) });
+  await page.getByLabel('Escolher foto').setInputFiles({ name: 'f.png', mimeType: 'image/png', buffer: await fotoGrande(page) });
   await expect(page.getByTestId('info-foto')).toBeVisible({ timeout: 15_000 });
   await page.getByRole('button', { name: 'Salvar item' }).click();
   await page.getByRole('region', { name: 'Carteira' }).getByLabel('Ouro').fill('2');
@@ -89,8 +89,11 @@ test('exportar, apagar e importar devolve a mesma ficha', async ({ page }) => {
   await page.getByRole('button', { name: 'Nova entrada' }).click();
   await page.getByLabel('Título').fill('Chegada a Vel');
   await page.getByLabel('Texto').fill('Skar derrubou o ogro.');
+  await page.getByLabel('Adicionar imagem').setInputFiles({ name: 'mapa.png', mimeType: 'image/png', buffer: await fotoGrande(page) });
+  await expect(page.getByAltText('Imagem 1')).toBeVisible({ timeout: 15_000 });
   await page.getByRole('button', { name: 'Salvar entrada' }).click();
   await expect(page.getByRole('heading', { name: 'Chegada a Vel' })).toBeVisible();
+  await expect(page.getByAltText('Imagem 1 de Chegada a Vel')).toHaveAttribute('src', /^data:image\//);
 
   await page.getByRole('tab', { name: 'Ficha' }).click();
   const [download] = await Promise.all([
@@ -113,6 +116,8 @@ test('exportar, apagar e importar devolve a mesma ficha', async ({ page }) => {
   await expect(page.getByText('Lamparina mágica')).toBeVisible();
   await expect(page.locator('img.miniatura')).toHaveAttribute('src', /^data:image\//);
   await expect(page.getByTestId('total-carteira')).toHaveText('Total: 2.000 cobre');
+  await expect(page.getByRole('region', { name: 'Histórico da carteira' })).toContainText('+2 Ouro');
   await page.getByRole('tab', { name: 'Journal' }).click();
   await expect(page.getByRole('heading', { name: 'Chegada a Vel' })).toBeVisible();
+  await expect(page.getByAltText('Imagem 1 de Chegada a Vel')).toHaveAttribute('src', /^data:image\//);
 });

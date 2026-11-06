@@ -713,3 +713,76 @@ h2 {
   overflow-wrap: anywhere;
   line-height: 1.5;
 }
+
+/* Imagens do journal */
+.imagens-journal {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.imagem-journal {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  border-radius: 8px;
+  background: #120d16;
+}
+
+.imagem-journal.miniatura-vazia {
+  aspect-ratio: 4 / 3;
+}
+
+.imagens-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.imagens-form:empty {
+  display: none;
+}
+
+.imagem-form {
+  position: relative;
+}
+
+.remover-imagem {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--fg);
+}
+
+/* Histórico da carteira */
+.historico-carteira {
+  margin-top: 16px;
+}
+
+.historico-carteira h3 {
+  margin: 0 0 4px;
+  font-size: 0.875rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.historico-carteira li {
+  grid-template-columns: 1fr auto auto;
+}
+
+.historico-carteira li span:first-child {
+  font-weight: 600;
+}
+
+.hist-cura span:first-child {
+  color: #b4e2c2;
+}
+
+.hist-dano span:first-child {
+  color: #f3b2ac;
+}

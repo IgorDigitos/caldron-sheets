@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { exportarFicha, importarFicha, ImportInvalido, lerArquivo, nomeArquivo, type ArquivoExport } from './exportacao';
 import { RepositorioMemoria } from './memoria';
 import { aplicar, alterar, criarFicha } from '../dominio/ficha';
-import { criarItem, definirMoeda } from '../dominio/inventario';
+import { criarItem, movimentarMoeda } from '../dominio/inventario';
 import { criarEntrada } from '../dominio/journal';
 import { SKAR } from '../rules/fixtures/skar';
 import type { Imagem } from '../midia/imagem';
@@ -14,13 +14,16 @@ async function skarCompleto() {
   let ficha = aplicar(criarFicha({ nome: 'Skar Lionet', raca: 'Humano', ...SKAR }), 'VIDA', 'dano', 8);
   const r = alterar(ficha, { tipo: 'nivel' }, 3);
   if (!r.ok) throw new Error('falhou');
-  ficha = { ...r.ficha, carteira: definirMoeda(definirMoeda(r.ficha.carteira, 'ouro', 2), 'alma', 1) };
+  ficha = { ...r.ficha, carteira: movimentarMoeda(movimentarMoeda(r.ficha.carteira, 'ouro', 2), 'alma', 1) };
   await repo.salvar(ficha);
   const imagem: Imagem = { id: 'img1', fichaId: ficha.id, dataUrl: DATA_URL, tipo: 'image/webp', largura: 1, altura: 1, bytes: 30, criadoEm: 1 };
   await repo.salvarImagem(imagem);
   await repo.salvarItem(criarItem(ficha.id, { nome: 'Lamparina mágica', imagemId: 'img1', peso: 0.5 }));
   await repo.salvarItem(criarItem(ficha.id, { nome: 'Cota de malha', defF: 4, equipado: true }));
-  await repo.salvarEntrada(criarEntrada(ficha.id, { titulo: 'Sessão 1', texto: 'Skar derrubou o ogro.', sessao: 1 }));
+  await repo.salvarImagem({ ...imagem, id: 'img2' });
+  await repo.salvarEntrada(
+    criarEntrada(ficha.id, { titulo: 'Sessão 1', texto: 'Skar derrubou o ogro.', sessao: 1, imagens: ['img2'] }),
+  );
   return { repo, ficha };
 }
 
@@ -41,7 +44,9 @@ describe('exportar e importar', () => {
     const importado = (await outro.obterPacote(id))!;
     expect(importado.ficha).toEqual(original.ficha);
     expect(ordenar(importado.itens)).toEqual(ordenar(original.itens));
-    expect(importado.imagens).toEqual(original.imagens);
+    expect(ordenar(importado.imagens)).toEqual(ordenar(original.imagens));
+    expect(importado.journal[0]!.imagens).toEqual(['img2']);
+    expect(importado.ficha.carteira.historico!.map((h) => h.moeda)).toEqual(['alma', 'ouro']);
     expect(importado.journal).toEqual(original.journal);
   });
 
@@ -111,6 +116,8 @@ describe('lerArquivo — validação', () => {
     ['imagem que não é imagem', (a) => (a.imagens[0]!.dataUrl = 'javascript:alert(1)'), 'imagens nº 1'],
     ['imagem svg', (a) => (a.imagens[0]!.dataUrl = 'data:image/svg+xml;base64,PHN2Zz4='), 'imagens nº 1'],
     ['journal sem texto', (a) => ((a.journal[0] as unknown as Record<string, unknown>).texto = 3), 'journal nº 1'],
+    ['journal com imagem que não está no arquivo', (a) => (a.journal[0]!.imagens = ['sumiu']), 'journal nº 1'],
+    ['journal com imagens que não é lista', (a) => ((a.journal[0] as unknown as Record<string, unknown>).imagens = 'img2'), 'journal nº 1'],
   ])('%s', async (_n, estragar, msg) => {
     const a = await valido();
     estragar(a);

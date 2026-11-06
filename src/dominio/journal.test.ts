@@ -9,12 +9,26 @@ describe('journal', () => {
     expect('sessao' in e).toBe(false);
   });
 
+  it('entrada só com imagem é válida', () => {
+    expect(criarEntrada('f1', { imagens: ['i1'] }).imagens).toEqual(['i1']);
+  });
+
+  it('lista de imagens vazia não é guardada', () => {
+    expect('imagens' in criarEntrada('f1', { titulo: 'x', imagens: [] })).toBe(false);
+  });
+
+  it('no máximo 6 imagens', () => {
+    expect(() => criarEntrada('f1', { titulo: 'x', imagens: ['1', '2', '3', '4', '5', '6', '7'] })).toThrow(
+      'No máximo 6 imagens por entrada',
+    );
+  });
+
   it('guarda o número da sessão', () => {
     expect(criarEntrada('f1', { titulo: 'x', sessao: 3 }).sessao).toBe(3);
   });
 
   it.each([
-    [{ titulo: '', texto: '  ' }, 'título ou um texto'],
+    [{ titulo: '', texto: '  ' }, 'título, um texto ou adicione uma imagem'],
     [{ titulo: 'x', data: '06/11/2026' }, 'Data inválida'],
     [{ titulo: 'x', data: '2026-13-45' }, 'Data inválida'],
     [{ titulo: 'x', sessao: 1.5 }, 'Sessão'],

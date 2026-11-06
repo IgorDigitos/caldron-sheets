@@ -25,7 +25,7 @@ import {
 import { formatar, type ErroCampo } from '../rules/motor';
 import { exportarFicha, nomeArquivo } from '../dados/exportacao';
 import { BarraRecurso } from './BarraRecurso';
-import { AbasFicha, Cabecalho, NaoEncontrada, useFicha } from './comum';
+import { AbasFicha, Cabecalho, Hora, NaoEncontrada, useFicha } from './comum';
 
 const HISTORICO_VISIVEL = 6;
 const DERIVADOS_EXIBIDOS = (Object.keys(FORMULAS_CALDRONIS) as Derivado[]).filter(
@@ -241,16 +241,6 @@ export function FichaTela({ repo, id }: Props) {
       </section>
     </main>
   );
-}
-
-/** Hora se for hoje; senão, dia/mês e hora (atributos mudam entre sessões). */
-function Hora({ em }: { em: number }) {
-  const d = new Date(em);
-  const hoje = new Date().toDateString() === d.toDateString();
-  const texto = hoje
-    ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-    : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  return <time dateTime={d.toISOString()}>{texto}</time>;
 }
 
 function CampoTexto({ rotulo, valor, onMudar }: { rotulo: string; valor: string; onMudar: (v: string) => void }) {

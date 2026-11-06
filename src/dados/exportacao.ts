@@ -75,7 +75,16 @@ export function lerArquivo(texto: string): ArquivoExport {
 
   validarLista(dados.itens, 'itens', f.id, (o) => ehTexto(o.nome) && ehNumero(o.qtd) && ehNumero(o.peso));
   validarLista(dados.imagens, 'imagens', f.id, (o) => ehTexto(o.dataUrl) && /^data:image\/(webp|jpeg|png);base64,/.test(o.dataUrl));
-  validarLista(dados.journal, 'journal', f.id, (o) => ehTexto(o.data) && ehTexto(o.texto));
+  const idsImagens = new Set((dados.imagens as { id: string }[]).map((i) => i.id));
+  validarLista(
+    dados.journal,
+    'journal',
+    f.id,
+    (o) =>
+      ehTexto(o.data) &&
+      ehTexto(o.texto) &&
+      (o.imagens === undefined || (Array.isArray(o.imagens) && o.imagens.every((id) => ehTexto(id) && idsImagens.has(id)))),
+  );
 
   return dados as unknown as ArquivoExport;
 }

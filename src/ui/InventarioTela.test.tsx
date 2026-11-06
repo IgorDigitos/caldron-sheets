@@ -59,7 +59,7 @@ describe('InventarioTela', () => {
     preencher('Def. Física', '4');
 
     const arquivo = new File(['x'], 'foto.jpg', { type: 'image/jpeg' });
-    fireEvent.change(screen.getByLabelText('Escolher foto da galeria'), { target: { files: [arquivo] } });
+    fireEvent.change(screen.getByLabelText('Escolher foto'), { target: { files: [arquivo] } });
     expect(await screen.findByTestId('info-foto')).toBeTruthy();
     expect(screen.getByTestId('info-foto').textContent).toBe('400×300 · 40 KB');
     expect(prepararImagem).toHaveBeenCalledWith(arquivo, ficha.id);
@@ -142,7 +142,7 @@ describe('InventarioTela', () => {
     const { prepararImagem } = await montar();
     prepararImagem.mockRejectedValueOnce(new Error('O arquivo não é uma imagem'));
     fireEvent.click(screen.getByRole('button', { name: 'Adicionar item' }));
-    fireEvent.change(screen.getByLabelText('Escolher foto da galeria'), {
+    fireEvent.change(screen.getByLabelText('Escolher foto'), {
       target: { files: [new File(['x'], 'a.txt', { type: 'text/plain' })] },
     });
     expect((await screen.findByRole('alert')).textContent).toBe('O arquivo não é uma imagem');
@@ -156,6 +156,48 @@ describe('InventarioTela', () => {
     fireEvent.change(within(carteira).getByLabelText("Moeda d'Alma"), { target: { value: '3' } });
     expect(screen.getByTestId('total-carteira').textContent).toBe('Total: 2.090 cobre');
     await waitFor(async () => expect((await repo.obter(ficha.id))!.carteira).toMatchObject({ alma: 3, moedas: { ouro: 2, bronze: 9 } }));
+  });
+
+  it('histórico da carteira registra cada entrada e saída', async () => {
+    const { repo, ficha } = await montar();
+    const carteira = screen.getByRole('region', { name: 'Carteira' });
+    const hist = () => within(screen.getByRole('region', { name: 'Histórico da carteira' }));
+    expect(hist().getByText('Nenhuma movimentação ainda.')).toBeTruthy();
+
+    fireEvent.change(within(carteira).getByLabelText('Ouro'), { target: { value: '5' } });
+    fireEvent.change(within(carteira).getByLabelText('Ouro'), { target: { value: '3' } });
+    fireEvent.change(within(carteira).getByLabelText("Moeda d'Alma"), { target: { value: '1' } });
+    fireEvent.change(within(carteira).getByLabelText('Prata'), { target: { value: '0' } }); // sem mudança
+
+    const linhas = hist().getAllByRole('listitem');
+    expect(linhas.map((l) => l.firstElementChild!.textContent)).toEqual(["+1 Moeda d'Alma", '−2 Ouro', '+5 Ouro']);
+    expect(linhas[1]!.textContent).toContain('5 → 3');
+    expect(linhas[1]!.className).toBe('hist-dano');
+    expect(linhas[2]!.className).toBe('hist-cura');
+    await waitFor(async () => expect((await repo.obter(ficha.id))!.carteira.historico).toHaveLength(3));
+  });
+
+  it('histórico da carteira mostra 6 e permite ver todas', async () => {
+    await montar();
+    const ouro = within(screen.getByRole('region', { name: 'Carteira' })).getByLabelText('Ouro');
+    for (let i = 1; i <= 8; i++) fireEvent.change(ouro, { target: { value: String(i) } });
+    const hist = within(screen.getByRole('region', { name: 'Histórico da carteira' }));
+    expect(hist.getAllByRole('listitem')).toHaveLength(6);
+    fireEvent.click(hist.getByRole('button', { name: 'Ver todas (8)' }));
+    expect(hist.getAllByRole('listitem')).toHaveLength(8);
+    fireEvent.click(hist.getByRole('button', { name: 'Mostrar menos' }));
+    expect(hist.getAllByRole('listitem')).toHaveLength(6);
+  });
+
+  it('item: botão de foto diz Adicionar e depois Trocar', async () => {
+    await montar();
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar item' }));
+    expect(screen.getByText('Adicionar foto')).toBeTruthy();
+    expect(screen.queryByText('Tirar foto')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Escolher foto'), {
+      target: { files: [new File(['x'], 'f.png', { type: 'image/png' })] },
+    });
+    expect(await screen.findByText('Trocar foto')).toBeTruthy();
   });
 
   it('moeda inválida é desfeita com aviso', async () => {

@@ -1,20 +1,22 @@
 import { useEffect, useState } from 'preact/hooks';
 import {
   defesaItens,
-  definirMoeda,
+  descreverMovimento,
   mudarQtd,
+  movimentarMoeda,
+  quantidadeMoeda,
   MOEDAS,
   ordenarItens,
   pesoTotal,
   temDefesa,
   totalCarteira,
   type Item,
-  type Moeda,
+  type TipoMoeda,
 } from '../dominio/inventario';
 import type { RepositorioFichas } from '../dados/repositorio';
 import type { prepararImagem } from '../midia/imagem';
 import { formatar } from '../rules/motor';
-import { AbasFicha, Cabecalho, NaoEncontrada, useFicha } from './comum';
+import { AbasFicha, Cabecalho, Hora, NaoEncontrada, useFicha } from './comum';
 import { FormItem } from './FormItem';
 import { Miniatura } from './Miniatura';
 
@@ -29,6 +31,7 @@ export function InventarioTela({ repo, id, prepararImagem }: Props) {
   const [itens, setItens] = useState<Item[] | undefined>();
   const [editando, setEditando] = useState<Item | 'novo' | null>(null);
   const [erro, setErro] = useState('');
+  const [verTodoHistorico, setVerTodoHistorico] = useState(false);
 
   useEffect(() => {
     let vivo = true;
@@ -56,17 +59,21 @@ export function InventarioTela({ repo, id, prepararImagem }: Props) {
       await repo.salvarItem(novo);
     });
 
-  const mudarMoeda = (moeda: Moeda | 'alma', texto: string, input: HTMLInputElement) => {
+  const mudarMoeda = (moeda: TipoMoeda, texto: string, input: HTMLInputElement) => {
     const qtd = Number(texto || 0);
     try {
-      const nova = { ...ficha, carteira: definirMoeda(ficha.carteira, moeda, qtd), atualizadoEm: Date.now() };
+      const carteira = movimentarMoeda(ficha.carteira, moeda, qtd);
+      if (carteira === ficha.carteira) return;
+      const nova = { ...ficha, carteira, atualizadoEm: Date.now() };
       setFicha(nova);
       void tentar(() => repo.salvar(nova));
     } catch (e) {
-      input.value = String(moeda === 'alma' ? ficha.carteira.alma : ficha.carteira.moedas[moeda]);
+      input.value = String(quantidadeMoeda(ficha.carteira, moeda));
       setErro((e as Error).message);
     }
   };
+
+  const historicoCarteira = ficha.carteira.historico ?? [];
 
   const bonus = defesaItens(itens);
   const defF = ficha.maximos.DEF_NATURAL + bonus.fisica;
@@ -212,6 +219,32 @@ export function InventarioTela({ repo, id, prepararImagem }: Props) {
               onChange={(e) => mudarMoeda('alma', e.currentTarget.value, e.currentTarget)}
             />
           </label>
+        </div>
+
+        <div class="historico historico-carteira" role="region" aria-label="Histórico da carteira">
+          <h3>Histórico</h3>
+          {historicoCarteira.length === 0 ? (
+            <p class="vazio">Nenhuma movimentação ainda.</p>
+          ) : (
+            <>
+              <ul>
+                {(verTodoHistorico ? historicoCarteira : historicoCarteira.slice(0, 6)).map((e) => (
+                  <li key={e.id} class={e.para > e.de ? 'hist-cura' : 'hist-dano'}>
+                    <span>{descreverMovimento(e)}</span>
+                    <span class="hist-recurso">
+                      {formatar(e.de)} → {formatar(e.para)}
+                    </span>
+                    <Hora em={e.em} />
+                  </li>
+                ))}
+              </ul>
+              {historicoCarteira.length > 6 && (
+                <button type="button" class="btn-link" onClick={() => setVerTodoHistorico(!verTodoHistorico)}>
+                  {verTodoHistorico ? 'Mostrar menos' : `Ver todas (${historicoCarteira.length})`}
+                </button>
+              )}
+            </>
+          )}
         </div>
       </section>
     </main>

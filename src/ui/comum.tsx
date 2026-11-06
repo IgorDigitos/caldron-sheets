@@ -73,3 +73,13 @@ export function lerNumero(texto: string, vazio = 0): number {
   const t = texto.trim().replace(',', '.');
   return t === '' ? vazio : Number(t);
 }
+
+/** Hora se for hoje; senão, dia/mês e hora (atributos mudam entre sessões). */
+export function Hora({ em }: { em: number }) {
+  const d = new Date(em);
+  const hoje = new Date().toDateString() === d.toDateString();
+  const texto = hoje
+    ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return <time dateTime={d.toISOString()}>{texto}</time>;
+}

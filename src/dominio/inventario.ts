@@ -111,10 +111,24 @@ export const MOEDAS = [
 
 export type Moeda = (typeof MOEDAS)[number]['id'];
 
+export type TipoMoeda = Moeda | 'alma';
+
+export interface EntradaCarteira {
+  id: string;
+  moeda: TipoMoeda;
+  de: number;
+  para: number;
+  em: number;
+}
+
+export const LIMITE_HISTORICO_CARTEIRA = 30;
+
 export interface Carteira {
   moedas: Record<Moeda, number>;
   /** Moedas d'Alma: contador à parte, não entram no total. */
   alma: number;
+  /** Entradas e saídas de moedas, mais nova primeiro. Ausente em fichas antigas. */
+  historico?: EntradaCarteira[];
 }
 
 export function carteiraVazia(): Carteira {
@@ -130,8 +144,31 @@ export function totalCarteira(c: Carteira): number {
   return Math.round(total * 10) / 10;
 }
 
-export function definirMoeda(c: Carteira, moeda: Moeda | 'alma', qtd: number): Carteira {
+export function quantidadeMoeda(c: Carteira, moeda: TipoMoeda): number {
+  return moeda === 'alma' ? c.alma : (c.moedas[moeda] ?? 0);
+}
+
+export function definirMoeda(c: Carteira, moeda: TipoMoeda, qtd: number): Carteira {
   if (!Number.isInteger(qtd) || qtd < 0) throw new ItemInvalido('Quantidade de moedas precisa ser inteira e ≥ 0');
   if (moeda === 'alma') return { ...c, alma: qtd };
   return { ...c, moedas: { ...c.moedas, [moeda]: qtd } };
+}
+
+/** Muda a quantidade de uma moeda e registra a entrada/saída. Sem mudança, devolve a mesma carteira. */
+export function movimentarMoeda(c: Carteira, moeda: TipoMoeda, qtd: number, agora = Date.now()): Carteira {
+  const de = quantidadeMoeda(c, moeda);
+  const nova = definirMoeda(c, moeda, qtd);
+  if (de === qtd) return c;
+  const entrada: EntradaCarteira = { id: novoId(), moeda, de, para: qtd, em: agora };
+  return { ...nova, historico: [entrada, ...(c.historico ?? [])].slice(0, LIMITE_HISTORICO_CARTEIRA) };
+}
+
+export function nomeMoeda(moeda: TipoMoeda): string {
+  return moeda === 'alma' ? "Moeda d'Alma" : MOEDAS.find((m) => m.id === moeda)!.nome;
+}
+
+/** Ex.: "+2 Ouro", "−1 Prata". */
+export function descreverMovimento(e: EntradaCarteira): string {
+  const delta = e.para - e.de;
+  return `${delta > 0 ? '+' : '−'}${Math.abs(delta).toLocaleString('pt-BR')} ${nomeMoeda(e.moeda)}`;
 }
