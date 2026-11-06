@@ -3,12 +3,13 @@
 import {
   ATRIBUTOS,
   calcularCaldronis,
+  NOMES_ATRIBUTOS,
   type Atributo,
   type Derivado,
   type FichaRegras,
   type ValorAtributo,
 } from '../rules/caldronis';
-import type { ErroCampo } from '../rules/motor';
+import { formatar, type ErroCampo } from '../rules/motor';
 
 export const RECURSOS = ['VIDA', 'STA', 'MANA'] as const;
 export type Recurso = (typeof RECURSOS)[number];
@@ -44,6 +45,23 @@ export interface EntradaHistorico {
 
 export const LIMITE_HISTORICO = 20;
 
+export type ParteAtributo = keyof ValorAtributo;
+
+/** O que foi alterado: o nível ou uma parte (base/extra/perda) de um atributo. */
+export type AlvoAlteracao = { tipo: 'nivel' } | { tipo: 'atributo'; atributo: Atributo; parte: ParteAtributo };
+
+export interface EntradaAlteracao {
+  id: string;
+  alvo: AlvoAlteracao;
+  de: number;
+  para: number;
+  /** Máximos de recurso que mudaram por causa desta alteração. */
+  efeitos: Partial<Record<Recurso, { de: number; para: number }>>;
+  em: number;
+}
+
+export const LIMITE_ALTERACOES = 30;
+
 export interface Ficha extends FichaRegras {
   id: string;
   nome: string;
@@ -53,6 +71,8 @@ export interface Ficha extends FichaRegras {
   maximos: Record<Derivado, number>;
   atuais: Record<Recurso, number>;
   historico: EntradaHistorico[];
+  /** Histórico de mudanças de nível e atributos, mais nova primeiro. */
+  alteracoes: EntradaAlteracao[];
   criadoEm: number;
   atualizadoEm: number;
 }
@@ -99,6 +119,7 @@ export function criarFicha(
     maximos,
     atuais: { VIDA: maximos.VIDA, STA: maximos.STA, MANA: maximos.MANA },
     historico: [],
+    alteracoes: [],
     criadoEm: agora,
     atualizadoEm: agora,
   };
@@ -115,6 +136,58 @@ export function recalcular(ficha: Ficha, agora = Date.now()): ResultadoFicha {
   const atuais = { ...ficha.atuais };
   for (const rec of RECURSOS) atuais[rec] = Math.min(atuais[rec], maximos[rec]);
   return { ok: true, ficha: { ...ficha, maximos, atuais, atualizadoEm: agora } };
+}
+
+function lerAlvo(ficha: FichaRegras, alvo: AlvoAlteracao): number {
+  if (alvo.tipo === 'nivel') return ficha.nivel;
+  return ficha.atributos[alvo.atributo][alvo.parte] ?? 0;
+}
+
+/**
+ * Muda o nível ou uma parte de um atributo, recalcula os máximos e registra a alteração.
+ * Se o valor não mudou, devolve a ficha como está, sem registro.
+ */
+export function alterar(ficha: Ficha, alvo: AlvoAlteracao, valor: number, agora = Date.now()): ResultadoFicha {
+  const de = lerAlvo(ficha, alvo);
+  if (de === valor) return { ok: true, ficha };
+
+  const mudada: Ficha =
+    alvo.tipo === 'nivel'
+      ? { ...ficha, nivel: valor }
+      : {
+          ...ficha,
+          atributos: {
+            ...ficha.atributos,
+            [alvo.atributo]: { ...ficha.atributos[alvo.atributo], [alvo.parte]: valor },
+          },
+        };
+  const r = recalcular(mudada, agora);
+  if (!r.ok) return r;
+
+  const efeitos: EntradaAlteracao['efeitos'] = {};
+  for (const rec of RECURSOS) {
+    const [antes, depois] = [ficha.maximos[rec], r.ficha.maximos[rec]];
+    if (antes !== depois) efeitos[rec] = { de: antes, para: depois };
+  }
+  const entrada: EntradaAlteracao = { id: novoId(), alvo, de, para: valor, efeitos, em: agora };
+  return {
+    ok: true,
+    ficha: { ...r.ficha, alteracoes: [entrada, ...(ficha.alteracoes ?? [])].slice(0, LIMITE_ALTERACOES) },
+  };
+}
+
+const NOMES_PARTES: Record<ParteAtributo, string> = { base: 'base', extra: 'extra', perda: 'perda' };
+
+/** Ex.: "Nível", "Constituição extra". */
+export function nomeAlvo(alvo: AlvoAlteracao): string {
+  return alvo.tipo === 'nivel' ? 'Nível' : `${NOMES_ATRIBUTOS[alvo.atributo]} ${NOMES_PARTES[alvo.parte]}`;
+}
+
+/** Ex.: "Vida máx. 45 → 56,3 · Stamina máx. 20 → 22,3". Vazio se nenhum máximo mudou. */
+export function descreverEfeitos(e: EntradaAlteracao): string {
+  return RECURSOS.filter((r) => e.efeitos[r])
+    .map((r) => `${NOMES_RECURSOS[r]} máx. ${formatar(e.efeitos[r]!.de)} → ${formatar(e.efeitos[r]!.para)}`)
+    .join(' · ');
 }
 
 export class ValorInvalido extends Error {}

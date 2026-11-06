@@ -113,6 +113,66 @@ describe('FichaTela', () => {
     expect(screen.getByText('Anão · Monge · Nível 2')).toBeTruthy();
   });
 
+  it('alterações de atributo aparecem no histórico próprio, com o efeito', async () => {
+    const { repo, ficha } = await montar();
+    const secao = screen.getByRole('region', { name: 'Alterações de atributos' });
+    expect(within(secao).getByText('Nenhuma alteração ainda.')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Constituição extra'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('Nível'), { target: { value: '3' } });
+
+    const itens = within(secao).getAllByRole('listitem');
+    expect(itens).toHaveLength(2);
+    expect(itens[0]!.textContent).toContain('Nível 2 → 3');
+    expect(itens[1]!.textContent).toContain('Constituição extra 0 → 2');
+    expect(itens[1]!.textContent).toContain('Vida máx. 45 → 56,3');
+    expect(itens[0]!.className).toBe('alt-subiu');
+
+    await waitFor(async () => expect((await repo.obter(ficha.id))!.alteracoes).toHaveLength(2));
+  });
+
+  it('reduzir atributo fica marcado como queda', async () => {
+    await montar();
+    fireEvent.change(screen.getByLabelText('Força base'), { target: { value: '6' } });
+    const item = within(screen.getByRole('region', { name: 'Alterações de atributos' })).getByRole('listitem');
+    expect(item.className).toBe('alt-desceu');
+    expect(item.textContent).toContain('Força base 8 → 6');
+  });
+
+  it('mesmo valor não gera registro', async () => {
+    await montar();
+    fireEvent.change(screen.getByLabelText('Força base'), { target: { value: '8' } });
+    expect(screen.getByText('Nenhuma alteração ainda.')).toBeTruthy();
+  });
+
+  it('mostra as últimas e permite ver todas', async () => {
+    await montar();
+    for (let n = 3; n <= 10; n++) fireEvent.change(screen.getByLabelText('Nível'), { target: { value: String(n) } });
+    const secao = screen.getByRole('region', { name: 'Alterações de atributos' });
+    expect(within(secao).getAllByRole('listitem')).toHaveLength(6);
+    fireEvent.click(within(secao).getByRole('button', { name: 'Ver todas (8)' }));
+    expect(within(secao).getAllByRole('listitem')).toHaveLength(8);
+    fireEvent.click(within(secao).getByRole('button', { name: 'Mostrar menos' }));
+    expect(within(secao).getAllByRole('listitem')).toHaveLength(6);
+  });
+
+  it('alteração de outro dia mostra a data', async () => {
+    const repo = new RepositorioMemoria();
+    const ficha = criarFicha({ nome: 'Skar Lionet', ...SKAR });
+    const d = new Date();
+    d.setDate(d.getDate() - 2);
+    d.setHours(21, 30, 0, 0);
+    const ontem = d.getTime();
+    const esperado = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}, 21:30`;
+    ficha.alteracoes = [
+      { id: 'a', alvo: { tipo: 'nivel' }, de: 1, para: 2, efeitos: {}, em: ontem },
+    ];
+    await repo.salvar(ficha);
+    render(<FichaTela repo={repo} id={ficha.id} />);
+    const secao = await screen.findByRole('region', { name: 'Alterações de atributos' });
+    expect(within(secao).getByRole('listitem').textContent).toContain(esperado);
+  });
+
   it('erro ao salvar aparece na tela', async () => {
     const repo = new RepositorioMemoria();
     const { ficha } = await montar(repo);

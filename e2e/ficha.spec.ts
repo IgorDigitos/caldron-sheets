@@ -83,4 +83,7 @@ test('editar atributo recalcula e persiste', async ({ page }) => {
   await expect(page.getByTestId('valor-VIDA')).toHaveText('45 / 50');
   await page.reload();
   await expect(page.getByTestId('valor-VIDA')).toHaveText('45 / 50');
+  const alteracoes = page.getByRole('region', { name: 'Alterações de atributos' });
+  await expect(alteracoes).toContainText('Nível 2 → 3');
+  await expect(alteracoes).toContainText('Vida máx. 45 → 50');
 });

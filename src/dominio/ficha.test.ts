@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  alterar,
   aplicar,
   criarFicha,
+  descreverEfeitos,
   descreverEntrada,
+  LIMITE_ALTERACOES,
   LIMITE_HISTORICO,
+  nomeAlvo,
   novoId,
   recalcular,
   restaurarTudo,
@@ -174,6 +178,73 @@ describe('recalcular', () => {
     const f = skar();
     const r = recalcular({ ...f, atributos: { ...f.atributos, FOR: { base: Number.NaN } } });
     expect(r.ok).toBe(false);
+  });
+});
+
+describe('alterar (histórico de atributos)', () => {
+  const CON_EXTRA = { tipo: 'atributo', atributo: 'CON', parte: 'extra' } as const;
+
+  it('registra de → para, a hora e o efeito nos máximos', () => {
+    const r = alterar(skar(), CON_EXTRA, 2, T + 10);
+    if (!r.ok) throw new Error('falhou');
+    const [e] = r.ficha.alteracoes;
+    expect(e).toMatchObject({ alvo: CON_EXTRA, de: 0, para: 2, em: T + 10 });
+    expect(e!.efeitos.VIDA!.de).toBe(45);
+    expect(e!.efeitos.VIDA!.para).toBeCloseTo(56.333, 2);
+    expect(e!.efeitos.MANA).toBeUndefined();
+    expect(nomeAlvo(e!.alvo)).toBe('Constituição extra');
+    expect(descreverEfeitos(e!)).toBe('Vida máx. 45 → 56,3 · Stamina máx. 20 → 23,3');
+    expect(r.ficha.atributos.CON).toEqual({ base: 5, extra: 2 });
+    expect(r.ficha.maximos.VIDA).toBeCloseTo(56.333, 2);
+  });
+
+  it('nível', () => {
+    const r = alterar(skar(), { tipo: 'nivel' }, 3);
+    if (!r.ok) throw new Error('falhou');
+    expect(r.ficha.nivel).toBe(3);
+    expect(nomeAlvo(r.ficha.alteracoes[0]!.alvo)).toBe('Nível');
+    expect(descreverEfeitos(r.ficha.alteracoes[0]!)).toBe('Vida máx. 45 → 50');
+  });
+
+  it('atributo que não mexe em recurso registra sem efeitos', () => {
+    const r = alterar(skar(), { tipo: 'atributo', atributo: 'CAR', parte: 'base' }, 4);
+    if (!r.ok) throw new Error('falhou');
+    expect(r.ficha.alteracoes[0]).toMatchObject({ de: 2, para: 4 });
+    // CAR entra na Mente → Mana muda.
+    expect(r.ficha.alteracoes[0]!.efeitos.MANA).toBeDefined();
+    const r2 = alterar(skar(), { tipo: 'atributo', atributo: 'SAB', parte: 'perda' }, 0.5);
+    if (!r2.ok) throw new Error('falhou');
+    expect(r2.ficha.alteracoes[0]!.de).toBe(0);
+  });
+
+  it('valor igual não registra nada e devolve a mesma ficha', () => {
+    const f = skar();
+    const r = alterar(f, { tipo: 'atributo', atributo: 'FOR', parte: 'base' }, 8);
+    expect(r).toEqual({ ok: true, ficha: f });
+    if (r.ok) expect(r.ficha).toBe(f);
+  });
+
+  it('mais nova primeiro e com limite', () => {
+    let f = skar();
+    for (let i = 1; i <= LIMITE_ALTERACOES + 3; i++) {
+      const r = alterar(f, { tipo: 'nivel' }, i + 1);
+      if (!r.ok) throw new Error('falhou');
+      f = r.ficha;
+    }
+    expect(f.alteracoes).toHaveLength(LIMITE_ALTERACOES);
+    expect(f.alteracoes[0]!.para).toBe(LIMITE_ALTERACOES + 4);
+  });
+
+  it('valor que o motor recusa devolve erro e não registra', () => {
+    const r = alterar(skar(), { tipo: 'atributo', atributo: 'FOR', parte: 'base' }, Number.NaN);
+    expect(r.ok).toBe(false);
+  });
+
+  it('ficha antiga sem lista de alterações funciona', () => {
+    const antiga = { ...skar(), alteracoes: undefined } as unknown as Ficha;
+    const r = alterar(antiga, { tipo: 'nivel' }, 4);
+    if (!r.ok) throw new Error('falhou');
+    expect(r.ficha.alteracoes).toHaveLength(1);
   });
 });
 

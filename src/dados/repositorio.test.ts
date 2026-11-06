@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { RepositorioDexie } from './dexie';
 import { RepositorioMemoria } from './memoria';
 import type { RepositorioFichas } from './repositorio';
-import { aplicar, criarFicha } from '../dominio/ficha';
+import Dexie from 'dexie';
+import { aplicar, criarFicha, type Ficha } from '../dominio/ficha';
 import { SKAR } from '../rules/fixtures/skar';
 
 // A mesma suíte roda em todas as implementações (na etapa 4 entra a do Firestore).
@@ -80,6 +81,24 @@ describe.each(implementacoes)('Repositório %s', (_nome, criar) => {
     await repo.salvar(f);
     f.atuais.VIDA = -999;
     expect((await repo.obter(f.id))!.atuais.VIDA).not.toBe(-999);
+  });
+});
+
+describe('Dexie migra fichas antigas', () => {
+  it('ficha salva na versão 1 ganha a lista de alterações vazia', async () => {
+    const nome = `teste-${crypto.randomUUID()}`;
+    const v1 = new Dexie(nome);
+    v1.version(1).stores({ fichas: 'id, nome, atualizadoEm' });
+    const antiga: Partial<Ficha> = criarFicha({ nome: 'Skar', ...SKAR });
+    delete antiga.alteracoes;
+    await v1.table('fichas').put(antiga);
+    v1.close();
+
+    const repo = new RepositorioDexie(nome);
+    abertos.push(repo);
+    const lida = await repo.obter(antiga.id!);
+    expect(lida!.alteracoes).toEqual([]);
+    expect(lida!.atuais.VIDA).toBe(45);
   });
 });
 

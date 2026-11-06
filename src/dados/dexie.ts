@@ -11,6 +11,17 @@ class BancoCaldron extends Dexie {
       // Só o que é consultado vira índice; o resto da ficha vai junto no documento.
       fichas: 'id, nome, atualizadoEm',
     });
+    // v2: histórico de alterações de nível/atributos.
+    this.version(2)
+      .stores({ fichas: 'id, nome, atualizadoEm' })
+      .upgrade((tx) =>
+        tx
+          .table('fichas')
+          .toCollection()
+          .modify((f: Partial<Ficha>) => {
+            f.alteracoes ??= [];
+          }),
+      );
   }
 }
 

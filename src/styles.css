@@ -404,3 +404,39 @@ h2 {
   padding: 0 4px;
   text-align: center;
 }
+
+/* Alterações de atributos */
+.alteracoes li {
+  grid-template-columns: 1fr auto;
+  align-items: start;
+}
+
+.alt-texto {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 6px;
+}
+
+.alt-subiu .alt-valores {
+  color: #b4e2c2;
+}
+
+.alt-desceu .alt-valores {
+  color: #f3b2ac;
+}
+
+.alt-efeitos {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.btn-link {
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}

@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'preact/hooks';
 import {
+  alterar,
   aplicar,
+  descreverEfeitos,
   descreverEntrada,
+  nomeAlvo,
   NOMES_RECURSOS,
   RECURSOS,
-  recalcular,
   restaurarTudo,
+  type AlvoAlteracao,
   type Ficha,
   type Recurso,
   type TipoMudanca,
@@ -17,9 +20,7 @@ import {
   NOMES_ATRIBUTOS,
   NOMES_DERIVADOS,
   valorAtual,
-  type Atributo,
   type Derivado,
-  type ValorAtributo,
 } from '../rules/caldronis';
 import { formatar, type ErroCampo } from '../rules/motor';
 import { BarraRecurso } from './BarraRecurso';
@@ -38,6 +39,7 @@ export function FichaTela({ repo, id }: Props) {
   const [ficha, setFicha] = useState<Ficha | null | undefined>(undefined);
   const [erros, setErros] = useState<ErroCampo[]>([]);
   const [erroSalvar, setErroSalvar] = useState('');
+  const [verTodas, setVerTodas] = useState(false);
 
   useEffect(() => {
     let vivo = true;
@@ -67,19 +69,14 @@ export function FichaTela({ repo, id }: Props) {
     }
   };
 
-  const mudarRegras = (mudanca: Partial<Ficha>) => {
-    const r = recalcular({ ...ficha, ...mudanca });
-    if (r.ok) {
-      setErros([]);
-      void salvar(r.ficha);
-    } else {
+  const mudar = (alvo: AlvoAlteracao, valor: number) => {
+    const r = alterar(ficha, alvo, valor);
+    if (!r.ok) {
       setErros(r.erros);
+      return;
     }
-  };
-
-  const mudarAtributo = (attr: Atributo, campo: keyof ValorAtributo, valor: number) => {
-    const atual = ficha.atributos[attr];
-    mudarRegras({ atributos: { ...ficha.atributos, [attr]: { ...atual, [campo]: valor } } });
+    setErros([]);
+    if (r.ficha !== ficha) void salvar(r.ficha);
   };
 
   const aplicarRecurso = (recurso: Recurso, tipo: TipoMudanca, valor: number) => {
@@ -140,12 +137,39 @@ export function FichaTela({ repo, id }: Props) {
               <li key={e.id} class={`hist-${e.tipo}`}>
                 <span class="hist-recurso">{NOMES_RECURSOS[e.recurso]}</span>
                 <span>{descreverEntrada(e)}</span>
-                <time dateTime={new Date(e.em).toISOString()}>
-                  {new Date(e.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                </time>
+                <Hora em={e.em} />
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section class="historico alteracoes" aria-label="Alterações de atributos">
+        <h2>Alterações de atributos</h2>
+        {ficha.alteracoes.length === 0 ? (
+          <p class="vazio">Nenhuma alteração ainda.</p>
+        ) : (
+          <>
+            <ul>
+              {(verTodas ? ficha.alteracoes : ficha.alteracoes.slice(0, HISTORICO_VISIVEL)).map((e) => (
+                <li key={e.id} class={e.para > e.de ? 'alt-subiu' : 'alt-desceu'}>
+                  <span class="alt-texto">
+                    <span class="alt-alvo">{nomeAlvo(e.alvo)}</span>{' '}
+                    <span class="alt-valores">
+                      {formatar(e.de)} → {formatar(e.para)}
+                    </span>
+                    {descreverEfeitos(e) && <small class="alt-efeitos">{descreverEfeitos(e)}</small>}
+                  </span>
+                  <Hora em={e.em} />
+                </li>
+              ))}
+            </ul>
+            {ficha.alteracoes.length > HISTORICO_VISIVEL && (
+              <button type="button" class="btn-link" onClick={() => setVerTodas(!verTodas)}>
+                {verTodas ? 'Mostrar menos' : `Ver todas (${ficha.alteracoes.length})`}
+              </button>
+            )}
+          </>
         )}
       </section>
 
@@ -168,7 +192,7 @@ export function FichaTela({ repo, id }: Props) {
           <CampoTexto rotulo="Nome" valor={ficha.nome} onMudar={(v) => mudarTexto('nome', v)} />
           <CampoTexto rotulo="Raça" valor={ficha.raca} onMudar={(v) => mudarTexto('raca', v)} />
           <CampoTexto rotulo="Classe" valor={ficha.classe} onMudar={(v) => mudarTexto('classe', v)} />
-          <CampoNumero rotulo="Nível" valor={ficha.nivel} min={1} onMudar={(v) => mudarRegras({ nivel: v })} />
+          <CampoNumero rotulo="Nível" valor={ficha.nivel} min={1} onMudar={(v) => mudar({ tipo: 'nivel' }, v)} />
         </div>
 
         {erros.length > 0 && (
@@ -204,7 +228,7 @@ export function FichaTela({ repo, id }: Props) {
                         oculto
                         valor={v[campo] ?? 0}
                         min={campo === 'base' ? undefined : 0}
-                        onMudar={(n) => mudarAtributo(a, campo, n)}
+                        onMudar={(n) => mudar({ tipo: 'atributo', atributo: a, parte: campo }, n)}
                       />
                     </td>
                   ))}
@@ -217,6 +241,16 @@ export function FichaTela({ repo, id }: Props) {
       </details>
     </main>
   );
+}
+
+/** Hora se for hoje; senão, dia/mês e hora (atributos mudam entre sessões). */
+function Hora({ em }: { em: number }) {
+  const d = new Date(em);
+  const hoje = new Date().toDateString() === d.toDateString();
+  const texto = hoje
+    ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return <time dateTime={d.toISOString()}>{texto}</time>;
 }
 
 function CampoTexto({ rotulo, valor, onMudar }: { rotulo: string; valor: string; onMudar: (v: string) => void }) {
