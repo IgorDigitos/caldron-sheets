@@ -55,11 +55,30 @@ worker só existe no build de produção.
 
 Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
 
+## Ficha e dados (etapa 2)
+
+- `src/dominio/ficha.ts` — modelo `Ficha` e funções puras: `criarFicha`, `aplicar` (dano/cura/gasto),
+  `recalcular` (máximos novos; se o máximo cai, o atual é cortado), `restaurarTudo`. Piso por recurso
+  em `PISO`: Vida sem piso (pode ficar negativa), STA e Mana em 0. Histórico guarda as últimas 20.
+- `alterar(ficha, alvo, valor)` muda nível ou atributo (base/extra/perda), recalcula e registra em
+  `ficha.alteracoes` (de → para, efeito nos máximos de Vida/STA/Mana, hora; últimas 30). Toda
+  edição de nível/atributo na tela passa por ela.
+- Mudou o formato salvo da ficha? Crie uma nova `version()` no `dexie.ts` com `upgrade()` que
+  preenche o campo nas fichas antigas, e um teste de migração em `repositorio.test.ts`.
+- `src/dados/repositorio.ts` — interface `RepositorioFichas`. Implementações: `dexie.ts`
+  (IndexedDB, usado no app) e `memoria.ts` (testes de tela). `repositorio.test.ts` roda a mesma
+  suíte em todas; a do Firestore (etapa 4) entra nessa lista.
+- `src/ui/` — telas. Rotas por hash: `#/` lista, `#/ficha/<id>` ficha. Testes de tela usam
+  `RepositorioMemoria`; testes do Dexie usam `fake-indexeddb`.
+
 ## Estrutura
 
 ```
 src/          código do app (Preact)
 src/rules/    motor de fórmulas e preset Caldronis (cobertura mínima 90%)
+src/dominio/  regras da ficha sem tela e sem banco
+src/dados/    repositórios (Dexie hoje, Firestore na etapa 4)
+src/ui/       componentes de tela
 e2e/          testes Playwright
 scripts/      utilitários (ex.: gen-icons.mjs gera os PNGs a partir de public/icon.svg)
 public/       ícones e assets estáticos

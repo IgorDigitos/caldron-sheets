@@ -18,6 +18,7 @@
   "type": "module",
   "private": true,
   "dependencies": {
+    "dexie": "^4.4.7",
     "preact": "^11.2.0"
   },
   "devDependencies": {
@@ -28,6 +29,7 @@
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.14.0",
+    "fake-indexeddb": "^6.2.7",
     "globals": "^17.14.0",
     "jsdom": "^29.1.1",
     "typescript": "^6.0.3",
