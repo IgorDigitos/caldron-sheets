@@ -5,7 +5,9 @@ import type { RepositorioFichas } from './dados/repositorio';
 import type { Aba } from './ui/comum';
 import { FichaTela } from './ui/FichaTela';
 import { InventarioTela } from './ui/InventarioTela';
+import { JogadoresTela } from './ui/JogadoresTela';
 import { JournalTela } from './ui/JournalTela';
+import { ContextoSessao, SESSAO_PADRAO, type InfoSessao } from './ui/papel';
 import { ListaFichas } from './ui/ListaFichas';
 
 function useOnline(): boolean {
@@ -40,7 +42,8 @@ function useRota(): [string, (r: string) => void] {
   return [rota, (r) => (location.hash = r)];
 }
 
-export function rotaParaTela(rota: string): { tela: 'lista' } | { tela: Aba; id: string } {
+export function rotaParaTela(rota: string): { tela: 'lista' | 'jogadores' } | { tela: Aba; id: string } {
+  if (rota === '/jogadores') return { tela: 'jogadores' };
   const m = /^\/ficha\/([\w-]+)(?:\/(inventario|journal))?$/.exec(rota);
   if (!m) return { tela: 'lista' };
   return { tela: (m[2] as Aba | undefined) ?? 'ficha', id: m[1]! };
@@ -55,6 +58,8 @@ interface PropsApp {
   onSair?: () => void;
   /** Aparece no topo da lista de fichas (ex.: migração das fichas locais). */
   avisoLista?: ComponentChildren;
+  /** Mestre ou Jogador. Sem isto, Mestre (modo local e testes). */
+  sessao?: InfoSessao;
 }
 
 function textoStatus(online: boolean, sync?: EstadoSync): string {
@@ -64,13 +69,13 @@ function textoStatus(online: boolean, sync?: EstadoSync): string {
   return n > 0 ? 'Sincronizando…' : 'Sincronizado';
 }
 
-export function App({ repo, sync, onLimparErroSync, usuario, onSair, avisoLista }: PropsApp) {
+export function App({ repo, sync, onLimparErroSync, usuario, onSair, avisoLista, sessao = SESSAO_PADRAO }: PropsApp) {
   const online = useOnline();
   const [rota, navegar] = useRota();
   const r = rotaParaTela(rota);
 
   return (
-    <>
+    <ContextoSessao.Provider value={sessao}>
       {usuario && (
         <p class="conta">
           <span>{usuario}</span>
@@ -104,6 +109,8 @@ export function App({ repo, sync, onLimparErroSync, usuario, onSair, avisoLista 
       {r.tela === 'ficha' && <FichaTela key={r.id} repo={repo} id={r.id} />}
       {r.tela === 'inventario' && <InventarioTela key={r.id} repo={repo} id={r.id} />}
       {r.tela === 'journal' && <JournalTela key={r.id} repo={repo} id={r.id} />}
-    </>
+      {r.tela === 'jogadores' &&
+        (sessao.papel === 'mestre' ? <JogadoresTela /> : <ListaFichas repo={repo} navegar={navegar} />)}
+    </ContextoSessao.Provider>
   );
 }

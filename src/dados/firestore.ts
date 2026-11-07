@@ -69,6 +69,8 @@ export class RepositorioFirestore implements RepositorioFichas {
   constructor(
     private readonly db: Firestore,
     private readonly traduzirErro: (e: unknown) => string = (e) => (e as Error).message,
+    /** Jogador: só enxerga as fichas dele (as regras exigem esse filtro na consulta). */
+    private readonly opcoes: { donoUid?: string } = {},
   ) {
     // Escritas que ficaram na fila de uma sessão anterior (app fechado sem rede) também contam.
     this.acompanhar(waitForPendingWrites(db));
@@ -176,7 +178,9 @@ export class RepositorioFirestore implements RepositorioFichas {
   // ---------- fichas ----------
 
   async listar(): Promise<ResumoFicha[]> {
-    const fichas = await this.lerLista<Ficha>(collection(this.db, COLECOES.fichas));
+    const col = collection(this.db, COLECOES.fichas);
+    const q = this.opcoes.donoUid ? query(col, where('donoUid', '==', this.opcoes.donoUid)) : col;
+    const fichas = await this.lerLista<Ficha>(q);
     return fichas.sort((a, b) => b.atualizadoEm - a.atualizadoEm).map(resumir);
   }
 

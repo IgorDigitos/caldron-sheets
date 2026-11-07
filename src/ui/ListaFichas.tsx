@@ -3,6 +3,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { criarFicha } from '../dominio/ficha';
 import { importarFicha, lerArquivo } from '../dados/exportacao';
 import type { RepositorioFichas, ResumoFicha } from '../dados/repositorio';
+import { nomeDoJogador, useSessao } from './papel';
 import { SKAR } from '../rules/fixtures/skar';
 
 interface Props {
@@ -12,6 +13,8 @@ interface Props {
 }
 
 export function ListaFichas({ repo, navegar, aviso }: Props) {
+  const { papel, jogadores } = useSessao();
+  const ehMestre = papel === 'mestre';
   const [fichas, setFichas] = useState<ResumoFicha[] | null>(null);
   const [erro, setErro] = useState('');
 
@@ -78,7 +81,7 @@ export function ListaFichas({ repo, navegar, aviso }: Props) {
       {fichas === null ? (
         <p class="carregando">Carregando…</p>
       ) : fichas.length === 0 ? (
-        <p class="vazio">Nenhuma ficha ainda.</p>
+        <p class="vazio">{ehMestre ? 'Nenhuma ficha ainda.' : 'O Mestre ainda não te deu nenhuma ficha.'}</p>
       ) : (
         <ul class="lista-fichas">
           {fichas.map((f) => (
@@ -86,44 +89,56 @@ export function ListaFichas({ repo, navegar, aviso }: Props) {
               <a href={`#/ficha/${f.id}`} class="cartao-ficha">
                 <strong>{f.nome}</strong>
                 <span>{[f.raca, f.classe, `Nível ${f.nivel}`].filter(Boolean).join(' · ')}</span>
+                {ehMestre && (
+                  <span class="dono" data-testid={`dono-${f.nome}`}>
+                    {nomeDoJogador(jogadores, f.donoUid) ?? 'sem jogador'}
+                  </span>
+                )}
               </a>
-              <button
-                type="button"
-                class="btn-icone"
-                aria-label={`Excluir ${f.nome}`}
-                onClick={() => void excluir(f)}
-              >
-                ✕
-              </button>
+              {ehMestre && (
+                <button
+                  type="button"
+                  class="btn-icone"
+                  aria-label={`Excluir ${f.nome}`}
+                  onClick={() => void excluir(f)}
+                >
+                  ✕
+                </button>
+              )}
             </li>
           ))}
         </ul>
       )}
 
-      <div class="acoes-lista">
-        <button type="button" class="btn btn-primario" onClick={() => void criar({ nome: 'Novo personagem' })}>
-          Nova ficha
-        </button>
-        <button
-          type="button"
-          class="btn btn-secundario"
-          onClick={() =>
-            void criar({ nome: 'Skar Lionet', raca: 'Humano', classe: 'Pugilista', ...SKAR })
-          }
-        >
-          Criar Skar de exemplo
-        </button>
-        <label class="btn btn-secundario botao-arquivo">
-          Importar backup (JSON)
-          <input
-            type="file"
-            accept="application/json,.json"
-            class="sr-only"
-            onChange={(e) => void importar(e)}
-            aria-label="Importar backup (JSON)"
-          />
-        </label>
-      </div>
+      {ehMestre && (
+        <div class="acoes-lista">
+          <button type="button" class="btn btn-primario" onClick={() => void criar({ nome: 'Novo personagem' })}>
+            Nova ficha
+          </button>
+          <button
+            type="button"
+            class="btn btn-secundario"
+            onClick={() =>
+              void criar({ nome: 'Skar Lionet', raca: 'Humano', classe: 'Pugilista', ...SKAR })
+            }
+          >
+            Criar Skar de exemplo
+          </button>
+          <label class="btn btn-secundario botao-arquivo">
+            Importar backup (JSON)
+            <input
+              type="file"
+              accept="application/json,.json"
+              class="sr-only"
+              onChange={(e) => void importar(e)}
+              aria-label="Importar backup (JSON)"
+            />
+          </label>
+          <a href="#/jogadores" class="btn btn-secundario botao-arquivo">
+            Jogadores
+          </a>
+        </div>
+      )}
     </main>
   );
 }

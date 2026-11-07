@@ -86,6 +86,8 @@ export interface Ficha extends FichaRegras {
   /** Histórico de mudanças de nível e atributos, mais nova primeiro. */
   alteracoes: EntradaAlteracao[];
   carteira: Carteira;
+  /** Uid do jogador dono da ficha (o Mestre escolhe). Sem dono = só o Mestre vê. */
+  donoUid?: string;
   criadoEm: number;
   atualizadoEm: number;
 }

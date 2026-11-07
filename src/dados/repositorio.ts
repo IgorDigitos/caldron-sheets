@@ -12,6 +12,7 @@ export interface ResumoFicha {
   raca: string;
   classe: string;
   atualizadoEm: number;
+  donoUid?: string;
 }
 
 /** Tudo de um personagem, como vai no arquivo de exportação. */
@@ -48,5 +49,13 @@ export interface RepositorioFichas {
 }
 
 export function resumir(f: Ficha): ResumoFicha {
-  return { id: f.id, nome: f.nome, nivel: f.nivel, raca: f.raca, classe: f.classe, atualizadoEm: f.atualizadoEm };
+  return {
+    id: f.id,
+    nome: f.nome,
+    nivel: f.nivel,
+    raca: f.raca,
+    classe: f.classe,
+    atualizadoEm: f.atualizadoEm,
+    ...(f.donoUid ? { donoUid: f.donoUid } : {}),
+  };
 }

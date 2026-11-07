@@ -1,10 +1,16 @@
 rules_version = '2';
 
-// Etapa 4: só o Mestre lê e escreve. Os papéis de Jogador entram na etapa 5.
+// Papéis (etapa 5):
+// - Mestre: lê e escreve tudo.
+// - Jogador: só as fichas em que é o dono (`donoUid`). Pode mexer em recursos, extra, histórico,
+//   carteira, inventário, journal e no extra/perda dos atributos. NÃO pode mudar base dos atributos,
+//   nome, raça, classe, nível, dono, nem criar/apagar fichas.
 //
-// "Última edição ganha": toda atualização precisa trazer `atualizadoEm` maior ou igual ao que está
-// no servidor. Um aparelho que ficou offline e volta com uma edição mais velha tem a escrita
-// recusada, e o cache dele volta para a versão mais nova do servidor.
+// Os máximos (Vida, STA, Mana, Corpo…) são calculados no aparelho de quem edita. Quando é o
+// jogador, o servidor REFAZ a conta das fórmulas do Caldronis abaixo e recusa máximo inventado.
+// ⚠️ Se as fórmulas de src/rules/caldronis.ts mudarem, `maximosConferem` tem que mudar junto.
+//
+// "Última edição ganha": toda atualização precisa trazer `atualizadoEm` >= o do servidor.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -36,6 +42,72 @@ service cloud.firestore {
       return request.resource.data.fichaId is string;
     }
 
+    /** O usuário logado é o dono da ficha `fichaId`. */
+    function donoDaFicha(fichaId) {
+      return logado()
+        && get(/databases/$(database)/documents/personagens/$(fichaId)).data.get('donoUid', '') == request.auth.uid;
+    }
+
+    // ---------- Conta das fórmulas (espelho de src/rules/caldronis.ts) ----------
+
+    function valorAtual(attrs, a) {
+      return attrs[a].base + attrs[a].get('extra', 0) - attrs[a].get('perda', 0);
+    }
+
+    function perto(a, b) {
+      return math.abs(a - b) < 0.000001;
+    }
+
+    // Vida/STA/Mana são inteiros arredondados para o mais próximo. Tolerância de meio ponto para
+    // não brigar com o arredondamento de ponto flutuante do JavaScript.
+    function inteiroPerto(v, x) {
+      return v == math.floor(v) && math.abs(v - x) <= 0.5000001;
+    }
+
+    function maximosConferem(d, antes) {
+      let at = d.atributos;
+      let ajustes = d.get('ajustes', {});
+      let con = valorAtual(at, 'CON');
+      let corpo = (valorAtual(at, 'FOR') + valorAtual(at, 'DES') + con) / 3.0 + ajustes.get('CORPO', 0);
+      let mente = (valorAtual(at, 'INT') + valorAtual(at, 'SAB') + valorAtual(at, 'CAR')) / 3.0 + ajustes.get('MENTE', 0);
+      let m = d.maximos;
+      return perto(m.CORPO, corpo)
+        && perto(m.MENTE, mente)
+        && inteiroPerto(m.VIDA, d.nivel * 5 + corpo * 2 + con * 5)
+        && inteiroPerto(m.STA, 5 + corpo * 2 + con)
+        && inteiroPerto(m.MANA, 5 + mente * 3)
+        && perto(m.DESLOCAMENTO, 7.5 + math.floor(corpo / 3.0) * 1.5)
+        && perto(m.DEF_NATURAL, corpo + con / 2.0)
+        && perto(m.DEF_MAGICA_NATURAL, mente + valorAtual(at, 'SAB') / 2.0)
+        // Só dependem do nível, que o jogador não muda.
+        && m.PA == antes.maximos.PA
+        && m.CONTRABALANCO == antes.maximos.CONTRABALANCO;
+    }
+
+    function atuaisValidos(d) {
+      return d.atuais.VIDA <= d.maximos.VIDA
+        && d.atuais.STA >= 0 && d.atuais.STA <= d.maximos.STA
+        && d.atuais.MANA >= 0 && d.atuais.MANA <= d.maximos.MANA;
+    }
+
+    function baseIgual(a) {
+      return request.resource.data.atributos[a].base == resource.data.atributos[a].base;
+    }
+
+    /** O que o jogador pode mudar na própria ficha. */
+    function edicaoDeJogador() {
+      let d = request.resource.data;
+      return d.diff(resource.data).affectedKeys()
+          .hasOnly(['atuais', 'extras', 'historico', 'alteracoes', 'carteira', 'atributos', 'maximos', 'atualizadoEm'])
+        && d.atributos.keys().hasOnly(['FOR', 'DES', 'CON', 'INT', 'SAB', 'CAR'])
+        && baseIgual('FOR') && baseIgual('DES') && baseIgual('CON')
+        && baseIgual('INT') && baseIgual('SAB') && baseIgual('CAR')
+        && maximosConferem(d, resource.data)
+        && atuaisValidos(d);
+    }
+
+    // ---------- Coleções ----------
+
     // Quem é o Mestre. Leitura pública (só revela um uid) porque a tela de login precisa saber se a
     // campanha já tem Mestre. Criado uma única vez, no primeiro acesso, pelo próprio Mestre.
     match /campanha/config {
@@ -46,28 +118,48 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    match /personagens/{id} {
-      allow read, delete: if ehMestre();
-      allow create: if ehMestre() && idConfere(id) && request.resource.data.atualizadoEm is number;
-      allow update: if ehMestre() && idConfere(id) && naoMaisVelha();
+    // Contas de jogador. Só o Mestre cria; cada um lê a própria.
+    match /usuarios/{uid} {
+      allow read: if ehMestre() || (logado() && request.auth.uid == uid);
+      allow create, update: if ehMestre()
+        && request.resource.data.papel == 'jogador'
+        && request.resource.data.usuario is string
+        && request.resource.data.keys().hasOnly(['usuario', 'papel', 'criadoEm']);
+      allow delete: if ehMestre();
     }
 
+    match /personagens/{id} {
+      allow read: if ehMestre() || (logado() && resource.data.get('donoUid', '') == request.auth.uid);
+      allow create: if ehMestre() && idConfere(id) && request.resource.data.atualizadoEm is number;
+      allow delete: if ehMestre();
+      allow update: if idConfere(id) && naoMaisVelha() && (
+        ehMestre()
+        || (logado() && resource.data.get('donoUid', '') == request.auth.uid && edicaoDeJogador())
+      );
+    }
+
+    // Itens, journal e imagens pertencem a uma ficha (`fichaId`); o dono da ficha mexe à vontade.
     match /itens/{id} {
-      allow read, delete: if ehMestre();
-      allow create: if ehMestre() && idConfere(id) && temFicha() && request.resource.data.atualizadoEm is number;
-      allow update: if ehMestre() && idConfere(id) && temFicha() && naoMaisVelha();
+      allow read, delete: if ehMestre() || donoDaFicha(resource.data.fichaId);
+      allow create: if idConfere(id) && temFicha() && request.resource.data.atualizadoEm is number
+        && (ehMestre() || donoDaFicha(request.resource.data.fichaId));
+      allow update: if idConfere(id) && temFicha() && naoMaisVelha()
+        && (ehMestre() || (donoDaFicha(resource.data.fichaId) && request.resource.data.fichaId == resource.data.fichaId));
     }
 
     match /journal/{id} {
-      allow read, delete: if ehMestre();
-      allow create: if ehMestre() && idConfere(id) && temFicha() && request.resource.data.atualizadoEm is number;
-      allow update: if ehMestre() && idConfere(id) && temFicha() && naoMaisVelha();
+      allow read, delete: if ehMestre() || donoDaFicha(resource.data.fichaId);
+      allow create: if idConfere(id) && temFicha() && request.resource.data.atualizadoEm is number
+        && (ehMestre() || donoDaFicha(request.resource.data.fichaId));
+      allow update: if idConfere(id) && temFicha() && naoMaisVelha()
+        && (ehMestre() || (donoDaFicha(resource.data.fichaId) && request.resource.data.fichaId == resource.data.fichaId));
     }
 
     // Imagens não são editadas: só criadas e apagadas. Limite de tamanho abaixo do 1MB do Firestore.
     match /imagens/{id} {
-      allow read, delete: if ehMestre();
-      allow create, update: if ehMestre() && idConfere(id) && temFicha()
+      allow read, delete: if ehMestre() || donoDaFicha(resource.data.fichaId);
+      allow create, update: if idConfere(id) && temFicha()
+        && (ehMestre() || donoDaFicha(request.resource.data.fichaId))
         && request.resource.data.dataUrl is string
         && request.resource.data.dataUrl.size() < 700000
         && request.resource.data.dataUrl.split(',')[0]

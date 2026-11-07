@@ -62,3 +62,14 @@ export async function recarregar(page: Page): Promise<void> {
   await expect(page.getByTestId('status')).toHaveAttribute('data-gravando', '0');
   await page.reload();
 }
+
+/** Entra com qualquer conta (ex.: jogador). Termina na lista de fichas. */
+export async function entrarComo(page: Page, usuario: string, senha: string): Promise<void> {
+  await page.goto('/');
+  const form = page.getByRole('form', { name: 'Entrar' });
+  await expect(form).toBeVisible();
+  await form.getByLabel('Usuário').fill(usuario);
+  await form.getByLabel('Senha').fill(senha);
+  await form.getByRole('button', { name: 'Entrar' }).click();
+  await expect(page.getByRole('heading', { name: 'Caldron Sheets' })).toBeVisible();
+}
