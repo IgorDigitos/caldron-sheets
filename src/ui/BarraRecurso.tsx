@@ -1,10 +1,15 @@
 import { useState } from 'preact/hooks';
-import { NOMES_RECURSOS, type Recurso, type TipoMudanca } from '../dominio/ficha';
+import { ehBasico, NOMES_RECURSOS, type IdRecurso, type Recurso, type TipoMudanca } from '../dominio/ficha';
 import { formatar } from '../rules/motor';
 import { Entrada } from './comum';
 
 interface Props {
-  recurso: Recurso;
+  /** Vida, STA, Mana ou o id de um recurso personalizado. */
+  recurso: IdRecurso;
+  /** Nome para mostrar (obrigatório para personalizados). */
+  nome?: string;
+  /** Cor da barra (personalizados). */
+  cor?: string;
   atual: number;
   max: number;
   /** Extra temporário (efeito de item, magia…). */
@@ -20,10 +25,12 @@ const BOTOES: Record<Recurso, Record<TipoMudanca, string>> = {
   MANA: { dano: 'Gastar', cura: 'Recuperar' },
 };
 
-export function BarraRecurso({ recurso, atual, max, extra = 0, onAplicar, onExtra }: Props) {
+export function BarraRecurso({ recurso, nome: nomeDado, cor, atual, max, extra = 0, onAplicar, onExtra }: Props) {
   const [texto, setTexto] = useState('');
   const [erro, setErro] = useState('');
-  const nome = NOMES_RECURSOS[recurso];
+  const nome = nomeDado ?? (ehBasico(recurso) ? NOMES_RECURSOS[recurso] : 'Recurso');
+  const botoes = ehBasico(recurso) ? BOTOES[recurso] : BOTOES.STA;
+  const classe = ehBasico(recurso) ? `recurso-${recurso.toLowerCase()}` : 'recurso-personalizado';
   const pct = max > 0 ? Math.max(0, Math.min(100, (atual / max) * 100)) : 0;
   const idInput = `qtd-${recurso}`;
 
@@ -39,7 +46,7 @@ export function BarraRecurso({ recurso, atual, max, extra = 0, onAplicar, onExtr
   };
 
   return (
-    <section class={`recurso recurso-${recurso.toLowerCase()}`} aria-label={nome}>
+    <section class={`recurso ${classe}`} aria-label={nome} style={cor ? { '--cor-recurso': cor } : undefined}>
       <div class="recurso-topo">
         <span class="recurso-nome">{nome}</span>
         <span class="recurso-valores">
@@ -80,10 +87,10 @@ export function BarraRecurso({ recurso, atual, max, extra = 0, onAplicar, onExtr
           }}
         />
         <button type="button" class="btn btn-dano" onClick={() => enviar('dano')}>
-          {BOTOES[recurso].dano}
+          {botoes.dano}
         </button>
         <button type="button" class="btn btn-cura" onClick={() => enviar('cura')}>
-          {BOTOES[recurso].cura}
+          {botoes.cura}
         </button>
       </div>
       {onExtra && (

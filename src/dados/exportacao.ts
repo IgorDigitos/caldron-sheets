@@ -1,6 +1,7 @@
 // Exporta e importa um personagem inteiro (ficha, itens, fotos e journal) em JSON — backup manual.
 
 import { carteiraVazia } from '../dominio/inventario';
+import type { DefRecurso } from '../dominio/recursos';
 import type { PacoteFicha, RepositorioFichas } from './repositorio';
 
 export const FORMATO = 'caldron-sheets';
@@ -10,6 +11,8 @@ const MAX_BYTES = 20 * 1024 * 1024;
 export interface ArquivoExport extends Omit<PacoteFicha, 'skills'> {
   /** Ausente em backups feitos antes das skills. */
   skills?: PacoteFicha['skills'];
+  /** Definições dos recursos personalizados que a ficha usa (para importar em outra campanha). */
+  recursos?: DefRecurso[];
   formato: typeof FORMATO;
   versao: number;
   exportadoEm: string;
@@ -20,7 +23,15 @@ export class ImportInvalido extends Error {}
 export async function exportarFicha(repo: RepositorioFichas, fichaId: string, agora = new Date()): Promise<ArquivoExport> {
   const pacote = await repo.obterPacote(fichaId);
   if (!pacote) throw new ImportInvalido('Ficha não encontrada');
-  return { formato: FORMATO, versao: VERSAO_EXPORT, exportadoEm: agora.toISOString(), ...pacote };
+  const usados = Object.keys(pacote.ficha.maxPersonalizados ?? {});
+  const recursos = usados.length ? (await repo.listarRecursos()).filter((d) => usados.includes(d.id)) : [];
+  return {
+    formato: FORMATO,
+    versao: VERSAO_EXPORT,
+    exportadoEm: agora.toISOString(),
+    ...pacote,
+    ...(recursos.length ? { recursos } : {}),
+  };
 }
 
 /** Nome de arquivo seguro: "skar-lionet.caldron.json". */
@@ -92,6 +103,16 @@ export function lerArquivo(texto: string): ArquivoExport {
     validarLista(dados.skills, 'skills', f.id, (o) => ehTexto(o.nome) && ehTexto(o.categoria) && ehTexto(o.descricao));
   }
 
+  if (dados.recursos !== undefined) {
+    exigir(Array.isArray(dados.recursos), 'Lista de recursos inválida');
+    dados.recursos.forEach((o, n) => {
+      exigir(
+        ehObjeto(o) && ehTexto(o.id) && /^rec-/.test(o.id) && ehTexto(o.nome) && ehTexto(o.formula),
+        `recursos nº ${n + 1} está inválido`,
+      );
+    });
+  }
+
   return dados as unknown as ArquivoExport;
 }
 
@@ -105,6 +126,11 @@ function completar(a: ArquivoExport): PacoteFicha {
 
 export async function importarFicha(repo: RepositorioFichas, arquivo: ArquivoExport): Promise<string> {
   const pacote = completar(arquivo);
+  // Recursos personalizados que esta campanha ainda não tem entram no catálogo.
+  if (arquivo.recursos?.length) {
+    const existentes = new Set((await repo.listarRecursos()).map((d) => d.id));
+    for (const def of arquivo.recursos) if (!existentes.has(def.id)) await repo.salvarRecurso(def);
+  }
   await repo.gravarPacote(pacote);
   return pacote.ficha.id;
 }

@@ -90,6 +90,24 @@ service cloud.firestore {
         && d.atuais.MANA >= 0 && d.atuais.MANA <= d.maximos.MANA;
     }
 
+    // Recursos personalizados (ex.: Ímpeto). Regras não têm laço, então a conferência é "desenrolada"
+    // para até 6 recursos (MAX_PERSONALIZADOS em src/dominio/recursos.ts).
+    function personalizadoOk(atuais, maximos, ids, i) {
+      return ids.size() <= i
+        || (atuais[ids[i]] is number && atuais[ids[i]] >= 0 && atuais[ids[i]] <= maximos[ids[i]]);
+    }
+
+    function personalizadosValidos(d) {
+      let atuais = d.get('personalizados', {});
+      let maximos = d.get('maxPersonalizados', {});
+      let ids = atuais.keys();
+      return ids.size() <= 6
+        && ids.toSet() == maximos.keys().toSet()
+        && personalizadoOk(atuais, maximos, ids, 0) && personalizadoOk(atuais, maximos, ids, 1)
+        && personalizadoOk(atuais, maximos, ids, 2) && personalizadoOk(atuais, maximos, ids, 3)
+        && personalizadoOk(atuais, maximos, ids, 4) && personalizadoOk(atuais, maximos, ids, 5);
+    }
+
     function baseIgual(a) {
       return request.resource.data.atributos[a].base == resource.data.atributos[a].base;
     }
@@ -98,12 +116,13 @@ service cloud.firestore {
     function edicaoDeJogador() {
       let d = request.resource.data;
       return d.diff(resource.data).affectedKeys()
-          .hasOnly(['atuais', 'extras', 'historico', 'alteracoes', 'carteira', 'atributos', 'maximos', 'atualizadoEm'])
+          .hasOnly(['atuais', 'extras', 'personalizados', 'historico', 'alteracoes', 'carteira', 'atributos', 'maximos', 'atualizadoEm'])
         && d.atributos.keys().hasOnly(['FOR', 'DES', 'CON', 'INT', 'SAB', 'CAR'])
         && baseIgual('FOR') && baseIgual('DES') && baseIgual('CON')
         && baseIgual('INT') && baseIgual('SAB') && baseIgual('CAR')
         && maximosConferem(d, resource.data)
-        && atuaisValidos(d);
+        && atuaisValidos(d)
+        && personalizadosValidos(d);
     }
 
     // ---------- Coleções ----------
@@ -153,6 +172,17 @@ service cloud.firestore {
         && (ehMestre() || donoDaFicha(request.resource.data.fichaId));
       allow update: if idConfere(id) && temFicha() && naoMaisVelha()
         && (ehMestre() || (donoDaFicha(resource.data.fichaId) && request.resource.data.fichaId == resource.data.fichaId));
+    }
+
+    // Catálogo de recursos personalizados da campanha. Todo mundo logado lê (o jogador precisa do
+    // nome e da cor para desenhar a barra); só o Mestre cria, edita e apaga.
+    match /recursos/{id} {
+      allow read: if logado();
+      allow create, update: if ehMestre() && idConfere(id)
+        && request.resource.data.nome is string
+        && request.resource.data.formula is string
+        && request.resource.data.atualizadoEm is number;
+      allow delete: if ehMestre();
     }
 
     // Skills (Magias, Técnicas, Habilidades): só o Mestre cria e edita; o dono da ficha só lê.

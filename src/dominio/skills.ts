@@ -1,7 +1,7 @@
 // Skills de uma ficha: Magias, Técnicas e Habilidades (mesmas colunas da planilha do Skar).
 // Só o Mestre cria e edita; o jogador só lê (garantido em firestore.rules).
 
-import { aplicar, extraDe, NOMES_RECURSOS, RECURSOS, type Ficha, type Recurso } from './ficha';
+import { aplicar, atualDe, ehBasico, extraDe, NOMES_RECURSOS, temRecurso, type Ficha, type IdRecurso } from './ficha';
 import { novoId } from './id';
 
 export const CATEGORIAS_SKILL = ['magia', 'tecnica', 'habilidade'] as const;
@@ -38,7 +38,8 @@ export interface Skill {
 }
 
 export interface Custo {
-  recurso: Recurso;
+  /** Vida, STA, Mana ou o id de um recurso personalizado (ex.: Ímpeto). */
+  recurso: IdRecurso;
   valor: number;
 }
 
@@ -64,7 +65,9 @@ function validar(s: Skill): Skill {
   const custos = s.custos ?? [];
   if (custos.length > MAX_CUSTOS) throw new SkillInvalida(`No máximo ${MAX_CUSTOS} custos por skill`);
   for (const c of custos) {
-    if (!RECURSOS.includes(c.recurso)) throw new SkillInvalida('Recurso do custo inválido');
+    if (!ehBasico(c.recurso) && !/^rec-[\w-]{1,80}$/.test(c.recurso)) {
+      throw new SkillInvalida('Recurso do custo inválido');
+    }
     if (!Number.isFinite(c.valor) || c.valor <= 0) throw new SkillInvalida('O custo precisa ser maior que zero');
   }
   if (new Set(custos.map((c) => c.recurso)).size !== custos.length) {
@@ -104,22 +107,28 @@ export function daCategoria(skills: readonly Skill[], categoria: CategoriaSkill)
 
 export class RecursoInsuficiente extends Error {}
 
-/** "2 Stamina + 1 Mana". Vazio se não tem custo. */
-export function descreverCusto(custos: readonly Custo[] | undefined): string {
-  return (custos ?? []).map((c) => `${c.valor.toLocaleString('pt-BR')} ${NOMES_RECURSOS[c.recurso]}`).join(' + ');
+type NomeDe = (id: IdRecurso) => string;
+const nomeBasico: NomeDe = (id) => (ehBasico(id) ? NOMES_RECURSOS[id] : 'Recurso');
+
+/** "2 Stamina + 1 Ímpeto". Vazio se não tem custo. `nome` resolve os personalizados. */
+export function descreverCusto(custos: readonly Custo[] | undefined, nome: NomeDe = nomeBasico): string {
+  return (custos ?? []).map((c) => `${c.valor.toLocaleString('pt-BR')} ${nome(c.recurso)}`).join(' + ');
 }
 
 /**
  * Usa a skill: desconta todos os custos de uma vez (extra primeiro, como no dano) e registra cada
  * um no histórico com o nome da skill. Se faltar recurso (contando o extra), nada é gasto.
  */
-export function usarSkill(ficha: Ficha, skill: Skill, agora = Date.now()): Ficha {
+export function usarSkill(ficha: Ficha, skill: Skill, agora = Date.now(), nome: NomeDe = nomeBasico): Ficha {
   const custos = skill.custos ?? [];
   for (const c of custos) {
-    const disponivel = ficha.atuais[c.recurso] + extraDe(ficha, c.recurso);
+    if (!temRecurso(ficha, c.recurso)) {
+      throw new RecursoInsuficiente(`Esta ficha não tem ${nome(c.recurso)} (custo de ${skill.nome})`);
+    }
+    const disponivel = atualDe(ficha, c.recurso) + extraDe(ficha, c.recurso);
     if (disponivel < c.valor) {
       throw new RecursoInsuficiente(
-        `${NOMES_RECURSOS[c.recurso]} insuficiente para ${skill.nome}: precisa de ${c.valor}, tem ${Math.max(0, disponivel)}`,
+        `${nome(c.recurso)} insuficiente para ${skill.nome}: precisa de ${c.valor}, tem ${Math.max(0, disponivel)}`,
       );
     }
   }

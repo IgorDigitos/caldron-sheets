@@ -141,6 +141,9 @@ export function ListaFichas({ repo, navegar, aviso }: Props) {
           <a href="#/jogadores" class="btn btn-secundario botao-arquivo">
             Jogadores
           </a>
+          <a href="#/recursos" class="btn btn-secundario botao-arquivo">
+            Recursos
+          </a>
         </div>
       )}
     </main>

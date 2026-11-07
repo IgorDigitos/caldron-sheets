@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
-import { NOMES_RECURSOS, RECURSOS, extraDe, type Recurso } from '../dominio/ficha';
+import { atualDe, extraDe, maxDe, NOMES_RECURSOS, RECURSOS, type IdRecurso } from '../dominio/ficha';
+import { idsPersonalizados, nomeRecurso } from '../dominio/recursos';
 import {
   CATEGORIAS_SKILL,
   criarSkill,
@@ -17,7 +18,7 @@ import {
 } from '../dominio/skills';
 import type { RepositorioFichas } from '../dados/repositorio';
 import { formatar } from '../rules/motor';
-import { AbasFicha, Cabecalho, NaoEncontrada, useFicha } from './comum';
+import { AbasFicha, Cabecalho, NaoEncontrada, useCatalogo, useFicha } from './comum';
 import { useSessao } from './papel';
 
 export function SkillsTela({ repo, id }: { repo: RepositorioFichas; id: string }) {
@@ -26,6 +27,8 @@ export function SkillsTela({ repo, id }: { repo: RepositorioFichas; id: string }
   const [editando, setEditando] = useState<Skill | CategoriaSkill | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   const ehMestre = useSessao().papel === 'mestre';
+  const defs = useCatalogo(repo);
+  const nome = (rid: IdRecurso) => nomeRecurso(rid, defs, NOMES_RECURSOS);
 
   useEffect(() => {
     let vivo = true;
@@ -40,10 +43,10 @@ export function SkillsTela({ repo, id }: { repo: RepositorioFichas; id: string }
 
   const usar = async (skill: Skill) => {
     try {
-      const nova = usarSkill(ficha, skill);
+      const nova = usarSkill(ficha, skill, Date.now(), nome);
       setFicha(nova);
       await repo.salvar(nova);
-      setAviso({ tipo: 'ok', texto: `Usou ${skill.nome}: −${descreverCusto(skill.custos)}` });
+      setAviso({ tipo: 'ok', texto: `Usou ${skill.nome}: −${descreverCusto(skill.custos, nome)}` });
     } catch (e) {
       setAviso({
         tipo: 'erro',
@@ -60,6 +63,8 @@ export function SkillsTela({ repo, id }: { repo: RepositorioFichas; id: string }
           repo={repo}
           fichaId={id}
           skill={typeof editando === 'string' ? undefined : editando}
+          recursos={[...RECURSOS, ...idsPersonalizados(ficha)]}
+          nome={nome}
           categoria={typeof editando === 'string' ? editando : editando.categoria}
           onFechar={(mudou) => {
             if (mudou?.tipo === 'salva') setSkills([...skills.filter((s) => s.id !== mudou.skill.id), mudou.skill]);
@@ -77,9 +82,9 @@ export function SkillsTela({ repo, id }: { repo: RepositorioFichas; id: string }
       <Cabecalho ficha={ficha} />
 
       <p class="resumo-recursos" data-testid="resumo-recursos">
-        {RECURSOS.map((r) => (
+        {[...RECURSOS, ...idsPersonalizados(ficha)].map((r) => (
           <span key={r}>
-            {NOMES_RECURSOS[r]} {formatar(ficha.atuais[r])}/{formatar(ficha.maximos[r])}
+            {nome(r)} {formatar(atualDe(ficha, r))}/{formatar(maxDe(ficha, r))}
             {extraDe(ficha, r) > 0 && <small> +{formatar(extraDe(ficha, r))}</small>}
           </span>
         ))}
@@ -128,7 +133,7 @@ export function SkillsTela({ repo, id }: { repo: RepositorioFichas; id: string }
                       <div class="skill-acoes">
                         {s.custos.length > 0 && (
                           <button type="button" class="btn btn-primario" onClick={() => void usar(s)}>
-                            Usar <small>(−{descreverCusto(s.custos)})</small>
+                            Usar <small>(−{descreverCusto(s.custos, nome)})</small>
                           </button>
                         )}
                         {ehMestre && (
@@ -156,16 +161,19 @@ function FormSkill(props: {
   fichaId: string;
   skill?: Skill;
   categoria: CategoriaSkill;
+  /** Recursos que podem ser custo: os básicos e os personalizados desta ficha. */
+  recursos: IdRecurso[];
+  nome: (id: IdRecurso) => string;
   onFechar: (m: Mudanca) => void;
 }) {
-  const { repo, fichaId, skill, onFechar } = props;
+  const { repo, fichaId, skill, onFechar, recursos, nome: nomeDoRecurso } = props;
   const [categoria, setCategoria] = useState<CategoriaSkill>(skill?.categoria ?? props.categoria);
   const [nome, setNome] = useState(skill?.nome ?? '');
   const [atkMod, setAtkMod] = useState(skill?.atkMod ?? '');
   const [pas, setPas] = useState(skill?.pas ?? '');
   const [gastos, setGastos] = useState(skill?.gastos ?? '');
   const [descricao, setDescricao] = useState(skill?.descricao ?? '');
-  const [custos, setCustos] = useState<{ recurso: Recurso; valor: string }[]>(
+  const [custos, setCustos] = useState<{ recurso: IdRecurso; valor: string }[]>(
     (skill?.custos ?? []).map((c) => ({ recurso: c.recurso, valor: String(c.valor) })),
   );
   const [erro, setErro] = useState('');
@@ -196,7 +204,9 @@ function FormSkill(props: {
     }
   };
 
-  const livres = RECURSOS.filter((r) => !custos.some((c) => c.recurso === r));
+  // Um custo de recurso que a ficha não tem mais (personalizado desabilitado) continua aparecendo.
+  const opcoes = [...new Set([...recursos, ...custos.map((c) => c.recurso)])];
+  const livres = opcoes.filter((r) => !custos.some((c) => c.recurso === r));
 
   return (
     <form class="form-journal" onSubmit={salvar} aria-label={skill ? `Editar ${skill.nome}` : 'Nova skill'}>
@@ -242,14 +252,16 @@ function FormSkill(props: {
               <select
                 value={c.recurso}
                 onChange={(e) =>
-                  setCustos(custos.map((x, j) => (j === i ? { ...x, recurso: e.currentTarget.value as Recurso } : x)))
+                  setCustos(custos.map((x, j) => (j === i ? { ...x, recurso: e.currentTarget.value } : x)))
                 }
               >
-                {RECURSOS.filter((r) => r === c.recurso || livres.includes(r)).map((r) => (
-                  <option key={r} value={r}>
-                    {NOMES_RECURSOS[r]}
-                  </option>
-                ))}
+                {opcoes
+                  .filter((r) => r === c.recurso || livres.includes(r))
+                  .map((r) => (
+                    <option key={r} value={r}>
+                      {nomeDoRecurso(r)}
+                    </option>
+                  ))}
               </select>
             </label>
             <label class="campo">

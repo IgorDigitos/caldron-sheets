@@ -16,6 +16,16 @@ import { novoId } from './id';
 export const RECURSOS = ['VIDA', 'STA', 'MANA'] as const;
 export type Recurso = (typeof RECURSOS)[number];
 
+/**
+ * Qualquer recurso: um dos básicos (Vida, STA, Mana) ou o id de um recurso personalizado do
+ * catálogo da campanha (ex.: Ímpeto), habilitado na ficha pelo Mestre.
+ */
+export type IdRecurso = string;
+
+export function ehBasico(id: IdRecurso): id is Recurso {
+  return (RECURSOS as readonly string[]).includes(id);
+}
+
 export const NOMES_RECURSOS: Record<Recurso, string> = {
   VIDA: 'Vida',
   STA: 'Stamina',
@@ -39,7 +49,7 @@ export type TipoEntrada = TipoMudanca | 'descanso' | 'extra';
 
 export interface EntradaHistorico {
   id: string;
-  recurso: Recurso;
+  recurso: IdRecurso;
   tipo: TipoEntrada;
   /** Quanto o jogador pediu (sempre positivo). Em `extra`, o novo valor do extra. */
   valor: number;
@@ -83,7 +93,13 @@ export interface Ficha extends FichaRegras {
    * Extra temporário de cada recurso (efeito de item, magia…). O dano/gasto tira primeiro daqui; a
    * cura não recupera. Ausente em fichas antigas = 0.
    */
-  extras?: Partial<Record<Recurso, number>>;
+  extras?: Partial<Record<IdRecurso, number>>;
+  /**
+   * Recursos personalizados habilitados nesta ficha: valor atual (jogador e Mestre mudam) e máximo
+   * (só o app do Mestre calcula e grava). As duas listas têm sempre as mesmas chaves.
+   */
+  personalizados?: Record<IdRecurso, number>;
+  maxPersonalizados?: Record<IdRecurso, number>;
   historico: EntradaHistorico[];
   /** Histórico de mudanças de nível e atributos, mais nova primeiro. */
   alteracoes: EntradaAlteracao[];
@@ -214,8 +230,31 @@ export function atualizarParaRegrasAtuais(ficha: Ficha, agora = Date.now()): Fic
 
 export class ValorInvalido extends Error {}
 
-export function extraDe(ficha: Ficha, recurso: Recurso): number {
+export function extraDe(ficha: Ficha, recurso: IdRecurso): number {
   return ficha.extras?.[recurso] ?? 0;
+}
+
+/** O recurso existe nesta ficha (básico sempre; personalizado só se habilitado). */
+export function temRecurso(ficha: Ficha, id: IdRecurso): boolean {
+  return ehBasico(id) || ficha.maxPersonalizados?.[id] !== undefined;
+}
+
+export function atualDe(ficha: Ficha, id: IdRecurso): number {
+  return ehBasico(id) ? ficha.atuais[id] : (ficha.personalizados?.[id] ?? 0);
+}
+
+export function maxDe(ficha: Ficha, id: IdRecurso): number {
+  return ehBasico(id) ? ficha.maximos[id] : (ficha.maxPersonalizados?.[id] ?? 0);
+}
+
+/** Até onde o recurso cai: Vida sem piso; o resto, 0. */
+export function pisoDe(id: IdRecurso): number {
+  return ehBasico(id) ? PISO[id] : 0;
+}
+
+function comAtual(ficha: Ficha, id: IdRecurso, valor: number): Ficha {
+  if (ehBasico(id)) return { ...ficha, atuais: { ...ficha.atuais, [id]: valor } };
+  return { ...ficha, personalizados: { ...ficha.personalizados, [id]: valor } };
 }
 
 function registrar(ficha: Ficha, entradas: EntradaHistorico[]): EntradaHistorico[] {
@@ -223,7 +262,7 @@ function registrar(ficha: Ficha, entradas: EntradaHistorico[]): EntradaHistorico
 }
 
 /** Ajusta o extra (temporário) de um recurso, à mão. Sem mudança, devolve a mesma ficha. */
-export function definirExtra(ficha: Ficha, recurso: Recurso, valor: number, agora = Date.now()): Ficha {
+export function definirExtra(ficha: Ficha, recurso: IdRecurso, valor: number, agora = Date.now()): Ficha {
   if (!Number.isFinite(valor) || valor < 0) throw new ValorInvalido('O extra precisa ser um número maior ou igual a zero');
   const de = extraDe(ficha, recurso);
   if (de === valor) return ficha;
@@ -242,22 +281,23 @@ export function definirExtra(ficha: Ficha, recurso: Recurso, valor: number, agor
  */
 export function aplicar(
   ficha: Ficha,
-  recurso: Recurso,
+  recurso: IdRecurso,
   tipo: TipoMudanca,
   valor: number,
   agora = Date.now(),
 ): Ficha {
+  if (!temRecurso(ficha, recurso)) throw new ValorInvalido('Esta ficha não tem esse recurso');
   if (!Number.isFinite(valor) || valor <= 0) {
     throw new ValorInvalido('Informe um número maior que zero');
   }
-  const antes = ficha.atuais[recurso];
-  const max = ficha.maximos[recurso];
+  const antes = atualDe(ficha, recurso);
+  const max = maxDe(ficha, recurso);
   const extra = extraDe(ficha, recurso);
   let depois: number;
   let doExtra = 0;
   if (tipo === 'dano') {
     doExtra = Math.min(extra, valor);
-    depois = Math.max(PISO[recurso], antes - (valor - doExtra));
+    depois = Math.max(pisoDe(recurso), antes - (valor - doExtra));
   } else {
     // Cura nunca passa do máximo, mas também nunca reduz quem já está acima dele.
     depois = Math.max(antes, Math.min(max, antes + valor));
@@ -272,8 +312,7 @@ export function aplicar(
     em: agora,
   };
   return {
-    ...ficha,
-    atuais: { ...ficha.atuais, [recurso]: depois },
+    ...comAtual(ficha, recurso, depois),
     ...(doExtra > 0 ? { extras: { ...ficha.extras, [recurso]: extra - doExtra } } : {}),
     historico: registrar(ficha, [entrada]),
     atualizadoEm: agora,
@@ -314,8 +353,9 @@ const ROTULO_TIPO: Record<Recurso, Record<TipoMudanca, string>> = {
   MANA: { dano: 'gasto', cura: 'recuperou' },
 };
 
-export function rotuloAcao(recurso: Recurso, tipo: TipoMudanca): string {
-  return ROTULO_TIPO[recurso][tipo];
+/** Vida: dano/cura. Stamina, Mana e personalizados: gasto/recuperou. */
+export function rotuloAcao(recurso: IdRecurso, tipo: TipoMudanca): string {
+  return (ehBasico(recurso) ? ROTULO_TIPO[recurso] : ROTULO_TIPO.STA)[tipo];
 }
 
 const num = (n: number) => n.toLocaleString('pt-BR');

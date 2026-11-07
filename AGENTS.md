@@ -159,6 +159,22 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
 - Aba `#/ficha/<id>/skills`. "Criar Skar de exemplo" já vem com as skills da planilha.
 - Backup inclui `skills` (opcional no arquivo, para backups antigos).
 
+## Recursos personalizados (ex.: Ímpeto)
+
+- Catálogo da campanha (coleção `recursos`, tela `#/recursos`, só Mestre): nome, cor, fórmula do máximo
+  (motor de fórmulas: NIVEL, atributos atuais, derivados; ex.: Ímpeto = `3 + int(NIVEL/2)`) e se começa
+  cheio ou em 0. `src/dominio/recursos.ts`.
+- Em cada ficha o Mestre marca quais tem ("Editar ficha → Recursos especiais"), até 6. A ficha guarda
+  `personalizados` (atual) e `maxPersonalizados` (máximo).
+- **Só o app do Mestre calcula o máximo** (`recalcularPersonalizados`, ao abrir a ficha e ao mudar
+  nível/atributo): o servidor não confere fórmula livre. As regras deixam o jogador mudar o atual
+  (0…máximo) e o extra, nunca o máximo nem a lista. Se o jogador mudar extra/perda de atributo, o
+  máximo do personalizado só atualiza quando o Mestre abrir a ficha.
+- Jogador e Mestre gastam/recuperam; o Descanso longo não mexe; podem ser custo de skill.
+- `IdRecurso` (string) generaliza `aplicar`, `definirExtra`, histórico e custos: básicos são
+  `VIDA/STA/MANA`, personalizados têm id `rec-…`.
+- Backup leva as definições usadas pela ficha; importar cria no catálogo as que faltam.
+
 ## Estrutura
 
 ```
