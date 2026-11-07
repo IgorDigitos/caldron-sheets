@@ -207,6 +207,29 @@ describe('FichaTela', () => {
     expect(screen.getByRole('tab', { name: 'Journal' }).getAttribute('href')).toBe(`#/ficha/${ficha.id}/journal`);
   });
 
+  it('extra de Vida: dano tira do extra primeiro, tudo vai pro histórico e é salvo', async () => {
+    const { repo, ficha } = await montar();
+    const vida = screen.getByRole('region', { name: 'Vida' });
+    fireEvent.change(within(vida).getByLabelText('Extra de Vida'), { target: { value: '10' } });
+    expect(screen.getByTestId('extra-VIDA').textContent).toBe('+10 extra');
+
+    aplicarNa('Vida', 'Quantidade de Vida', '15', 'Dano');
+    expect(screen.getByTestId('valor-VIDA').textContent).toBe('40 / 45');
+    expect(screen.queryByTestId('extra-VIDA')).toBeNull();
+
+    const hist = within(screen.getByRole('region', { name: 'Histórico' }));
+    expect(hist.getByText('−15 dano (10 do extra)')).toBeTruthy();
+    expect(hist.getByText('extra 0 → 10')).toBeTruthy();
+    await waitFor(async () => expect((await repo.obter(ficha.id))!.extras?.VIDA).toBe(0));
+  });
+
+  it('descanso longo aparece no histórico', async () => {
+    await montar();
+    aplicarNa('Vida', 'Quantidade de Vida', '40', 'Dano');
+    fireEvent.click(screen.getByRole('button', { name: 'Descanso longo' }));
+    expect(within(screen.getByRole('region', { name: 'Histórico' })).getByText('+23 descanso longo')).toBeTruthy();
+  });
+
   it('ficha salva com máximo quebrado (regra antiga) abre arredondada e é salva assim', async () => {
     const repo = new RepositorioMemoria();
     const f = criarFicha({ nome: 'Rogerin', ...SKAR });

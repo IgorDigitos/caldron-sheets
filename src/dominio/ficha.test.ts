@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   alterar,
   aplicar,
+  definirExtra,
+  extraDe,
   atualizarParaRegrasAtuais,
   criarFicha,
   descreverEfeitos,
@@ -278,7 +280,86 @@ describe('atualizarParaRegrasAtuais (fichas salvas antes do arredondamento)', ()
   });
 });
 
+describe('extra (temporário)', () => {
+  it('definir extra registra no histórico; mesmo valor não registra', () => {
+    let f = definirExtra(skar(), 'VIDA', 10, T + 1);
+    expect(extraDe(f, 'VIDA')).toBe(10);
+    expect(descreverEntrada(f.historico[0]!)).toBe('extra 0 → 10');
+    expect(f.atualizadoEm).toBe(T + 1);
+    const igual = definirExtra(f, 'VIDA', 10);
+    expect(igual).toBe(f);
+    f = definirExtra(f, 'VIDA', 4);
+    expect(descreverEntrada(f.historico[0]!)).toBe('extra 10 → 4');
+  });
+
+  it('dano tira primeiro do extra', () => {
+    let f = definirExtra(skar(), 'VIDA', 10);
+    f = aplicar(f, 'VIDA', 'dano', 6);
+    expect(extraDe(f, 'VIDA')).toBe(4);
+    expect(f.atuais.VIDA).toBe(45);
+    expect(descreverEntrada(f.historico[0]!)).toBe('−6 dano (6 do extra)');
+    f = aplicar(f, 'VIDA', 'dano', 9); // 4 do extra + 5 da Vida
+    expect(extraDe(f, 'VIDA')).toBe(0);
+    expect(f.atuais.VIDA).toBe(40);
+    expect(f.historico[0]).toMatchObject({ valor: 9, efetivo: -5, doExtra: 4 });
+    expect(descreverEntrada(f.historico[0]!)).toBe('−9 dano (4 do extra)');
+  });
+
+  it('dano sem extra não registra "do extra"', () => {
+    const f = aplicar(skar(), 'VIDA', 'dano', 3);
+    expect('doExtra' in f.historico[0]!).toBe(false);
+    expect(f.extras).toBeUndefined();
+  });
+
+  it('gastar Stamina e Mana também consome o extra primeiro', () => {
+    let f = definirExtra(definirExtra(skar(), 'STA', 5), 'MANA', 2);
+    f = aplicar(f, 'STA', 'dano', 7);
+    f = aplicar(f, 'MANA', 'dano', 2);
+    expect(f.atuais.STA).toBe(18);
+    expect(extraDe(f, 'STA')).toBe(0);
+    expect(f.atuais.MANA).toBe(12);
+    expect(extraDe(f, 'MANA')).toBe(0);
+    expect(descreverEntrada(f.historico[1]!)).toBe('−7 gasto (5 do extra)');
+  });
+
+  it('cura não recupera o extra', () => {
+    let f = definirExtra(skar(), 'VIDA', 5);
+    f = aplicar(f, 'VIDA', 'dano', 15); // 5 extra + 10 Vida
+    f = aplicar(f, 'VIDA', 'cura', 100);
+    expect(f.atuais.VIDA).toBe(45);
+    expect(extraDe(f, 'VIDA')).toBe(0);
+  });
+
+  it.each([-1, Number.NaN, Infinity])('extra inválido (%d) é recusado', (v) => {
+    expect(() => definirExtra(skar(), 'VIDA', v)).toThrow(ValorInvalido);
+  });
+
+  it('ficha antiga sem extras', () => {
+    expect(extraDe(skar(), 'MANA')).toBe(0);
+  });
+});
+
 describe('descansoLongo', () => {
+  it('registra no histórico cada recurso que subiu', () => {
+    let f = aplicar(skar(), 'VIDA', 'dano', 40);
+    f = aplicar(f, 'MANA', 'dano', 5);
+    f = descansoLongo(f, T + 9);
+    expect(f.historico.slice(0, 2).map((e) => [e.recurso, descreverEntrada(e)])).toEqual([
+      ['VIDA', '+23 descanso longo'],
+      ['MANA', '+5 descanso longo'],
+    ]);
+    expect(f.historico[2]!.tipo).toBe('dano'); // STA estava cheia: sem linha
+  });
+
+  it('com tudo cheio não registra nada', () => {
+    expect(descansoLongo(skar()).historico).toEqual([]);
+  });
+
+  it('não mexe no extra', () => {
+    const f = descansoLongo(definirExtra(aplicar(skar(), 'VIDA', 'dano', 10), 'VIDA', 7));
+    expect(extraDe(f, 'VIDA')).toBe(7);
+  });
+
   it('recupera 50% da Vida máxima e enche Stamina e Mana', () => {
     let f = aplicar(skar(), 'VIDA', 'dano', 40); // 5 / 45
     f = aplicar(f, 'STA', 'dano', 15);

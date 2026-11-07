@@ -70,4 +70,31 @@ describe('BarraRecurso', () => {
     expect(onAplicar).toHaveBeenCalledWith('dano', 2);
     expect(screen.getByRole('button', { name: 'Recuperar' })).toBeTruthy();
   });
+
+  it('mostra o selo de extra só quando há extra', () => {
+    const { rerender } = render(<BarraRecurso recurso="VIDA" atual={45} max={45} onAplicar={() => {}} />);
+    expect(screen.queryByTestId('extra-VIDA')).toBeNull();
+    rerender(<BarraRecurso recurso="VIDA" atual={45} max={45} extra={10} onAplicar={() => {}} />);
+    expect(screen.getByTestId('extra-VIDA').textContent).toBe('+10 extra');
+  });
+
+  it('campo Extra chama onExtra; vazio vira 0; negativo avisa e desfaz', () => {
+    const onExtra = vi.fn();
+    render(<BarraRecurso recurso="MANA" atual={12} max={12} extra={3} onAplicar={() => {}} onExtra={onExtra} />);
+    const campo = screen.getByLabelText('Extra de Mana') as HTMLInputElement;
+    expect(campo.value).toBe('3');
+    fireEvent.change(campo, { target: { value: '8' } });
+    expect(onExtra).toHaveBeenLastCalledWith(8);
+    fireEvent.change(campo, { target: { value: '' } });
+    expect(onExtra).toHaveBeenLastCalledWith(0);
+    fireEvent.change(campo, { target: { value: '-2' } });
+    expect(onExtra).toHaveBeenCalledTimes(2);
+    expect(campo.value).toBe('3');
+    expect(screen.getByRole('alert').textContent).toBe('O extra precisa ser um número maior ou igual a zero');
+  });
+
+  it('sem onExtra o campo não aparece', () => {
+    render(<BarraRecurso recurso="VIDA" atual={45} max={45} onAplicar={() => {}} />);
+    expect(screen.queryByLabelText('Extra de Vida')).toBeNull();
+  });
 });

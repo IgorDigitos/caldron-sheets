@@ -64,7 +64,11 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
 
 - `src/dominio/ficha.ts` — modelo `Ficha` e funções puras: `criarFicha`, `aplicar` (dano/cura/gasto),
   `recalcular` (máximos novos; se o máximo cai, o atual é cortado), `descansoLongo` (recupera 50% da
-  Vida máxima, arredondado, sem passar do máximo; enche STA e Mana). Piso por recurso
+  Vida máxima, arredondado, sem passar do máximo; enche STA e Mana).
+- **Extra (temporário)** por recurso em `ficha.extras` (campo manual no cartão do recurso): dano/gasto tira
+  primeiro do extra, cura não recupera, descanso não mexe. `definirExtra`, `extraDe`.
+- Histórico de recursos (`TipoEntrada`): dano, cura, `descanso` (uma linha por recurso que subiu) e
+  `extra` (de → para). Piso por recurso
   em `PISO`: Vida sem piso (pode ficar negativa), STA e Mana em 0. Histórico guarda as últimas 20.
 - `alterar(ficha, alvo, valor)` muda nível ou atributo (base/extra/perda), recalcula e registra em
   `ficha.alteracoes` (de → para, efeito nos máximos de Vida/STA/Mana, hora; últimas 30). Toda

@@ -859,3 +859,55 @@ h2 {
   border: 1px solid var(--accent);
   font-size: 0.9375rem;
 }
+
+/* Extra (temporário) dos recursos e novas linhas do histórico */
+.recurso-valores {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.selo-extra {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #1b1420;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.campo-extra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.campo-extra input {
+  width: 72px;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #120d16;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.9375rem;
+  text-align: center;
+}
+
+.hist-descanso span:nth-child(2) {
+  color: #b4e2c2;
+}
+
+.hist-extra span:nth-child(2) {
+  color: var(--accent);
+}
+
+.campo-extra label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

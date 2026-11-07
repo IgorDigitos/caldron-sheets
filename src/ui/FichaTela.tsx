@@ -2,6 +2,8 @@ import { useState } from 'preact/hooks';
 import {
   alterar,
   aplicar,
+  definirExtra,
+  extraDe,
   descreverEfeitos,
   descreverEntrada,
   nomeAlvo,
@@ -111,7 +113,9 @@ export function FichaTela({ repo, id }: Props) {
             recurso={r}
             atual={ficha.atuais[r]}
             max={ficha.maximos[r]}
+            extra={extraDe(ficha, r)}
             onAplicar={(tipo, valor) => aplicarRecurso(r, tipo, valor)}
+            onExtra={(valor) => void salvar(definirExtra(ficha, r, valor))}
           />
         ))}
         <button type="button" class="btn btn-secundario" onClick={() => void salvar(descansoLongo(ficha))}>
