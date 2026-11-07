@@ -7,7 +7,8 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Em PR, a rodada nova cancela a antiga; na main nunca (não interromper uma publicação)
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
@@ -46,3 +47,38 @@ jobs:
             playwright-report
             test-results
           retention-days: 7
+
+  # Publica só depois de TODOS os testes acima passarem.
+  # PR → canal de prévia (link temporário, comentado no PR). Merge na main → site de verdade.
+  deploy:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # PR de fork não recebe o segredo; sem ele não há como publicar.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Publicar no Firebase Hosting
+        id: publicar
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CALDRON_SHEETS }}
+          projectId: caldron-sheets
+          channelId: ${{ github.event_name == 'push' && 'live' || '' }}
+          expires: 7d
+      - run: npx playwright install --with-deps chromium
+      - name: Fumaça contra o site publicado
+        env:
+          BASE_URL: ${{ github.event_name == 'push' && 'https://caldron-sheets.web.app' || steps.publicar.outputs.details_url }}
+        run: npm run e2e:producao

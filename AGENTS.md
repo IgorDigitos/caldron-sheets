@@ -134,6 +134,20 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
 - Interface: `ContextoSessao` (`src/ui/papel.tsx`) diz o papel às telas; sem contexto = Mestre.
 - Trocar senha de jogador: só pelo console do Firebase (sem Admin SDK no plano gratuito).
 
+## Publicação (etapa 6)
+
+- Site: **https://caldron-sheets.web.app** (Firebase Hosting, `firebase.json`). `index.html`, `sw.js` e o
+  manifesto vão sem cache; `assets/` com hash em cache de 1 ano.
+- CI (`.github/workflows/ci.yml`): o job `deploy` só roda depois do `check` (lint, tipos, cobertura,
+  emulador e E2E). Em PR publica num **canal de prévia** (link comentado no PR, expira em 7 dias); no
+  push para `main` publica no site de verdade. Depois roda `npm run e2e:producao` (fumaça sem login
+  contra o link publicado: abre, é instalável, abre sem rede).
+- Segredo `FIREBASE_SERVICE_ACCOUNT_CALDRON_SHEETS` (criado por `firebase init hosting:github`; conta de
+  serviço só com permissão de Hosting). **As regras do Firestore NÃO são publicadas pelo CI**: rode
+  `npx firebase deploy --only firestore:rules` à mão depois de mudar `firestore.rules`.
+- Publicar à mão: `npm run deploy`.
+- O app pede armazenamento persistente ao abrir (`src/plataforma/armazenamento.ts`).
+
 ## Estrutura
 
 ```
