@@ -7,7 +7,7 @@ import {
   nomeAlvo,
   NOMES_RECURSOS,
   RECURSOS,
-  restaurarTudo,
+  descansoLongo,
   type AlvoAlteracao,
   type Ficha,
   type Recurso,
@@ -114,8 +114,8 @@ export function FichaTela({ repo, id }: Props) {
             onAplicar={(tipo, valor) => aplicarRecurso(r, tipo, valor)}
           />
         ))}
-        <button type="button" class="btn btn-secundario" onClick={() => void salvar(restaurarTudo(ficha))}>
-          Descanso: restaurar tudo
+        <button type="button" class="btn btn-secundario" onClick={() => void salvar(descansoLongo(ficha))}>
+          Descanso longo
         </button>
       </div>
 

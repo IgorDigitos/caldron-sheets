@@ -56,13 +56,16 @@ describe('FichaTela', () => {
     expect(screen.getByText('−30 gasto')).toBeTruthy();
   });
 
-  it('descanso restaura tudo', async () => {
-    await montar();
-    aplicarNa('Vida', 'Quantidade de Vida', '10', 'Dano');
+  it('descanso longo: metade da Vida máxima, Stamina e Mana cheias', async () => {
+    const { repo, ficha } = await montar();
+    aplicarNa('Vida', 'Quantidade de Vida', '40', 'Dano');
+    aplicarNa('Stamina', 'Quantidade de Stamina', '15', 'Gastar');
     aplicarNa('Mana', 'Quantidade de Mana', '5', 'Gastar');
-    fireEvent.click(screen.getByRole('button', { name: 'Descanso: restaurar tudo' }));
-    expect(screen.getByTestId('valor-VIDA').textContent).toBe('45 / 45');
+    fireEvent.click(screen.getByRole('button', { name: 'Descanso longo' }));
+    expect(screen.getByTestId('valor-VIDA').textContent).toBe('28 / 45');
+    expect(screen.getByTestId('valor-STA').textContent).toBe('20 / 20');
     expect(screen.getByTestId('valor-MANA').textContent).toBe('12 / 12');
+    await waitFor(async () => expect((await repo.obter(ficha.id))!.atuais.VIDA).toBe(28));
   });
 
   it('histórico vazio avisa', async () => {

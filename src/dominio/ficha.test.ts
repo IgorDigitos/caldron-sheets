@@ -11,7 +11,7 @@ import {
   nomeAlvo,
   novoId,
   recalcular,
-  restaurarTudo,
+  descansoLongo,
   ValorInvalido,
   type Ficha,
 } from './ficha';
@@ -278,12 +278,36 @@ describe('atualizarParaRegrasAtuais (fichas salvas antes do arredondamento)', ()
   });
 });
 
-describe('restaurarTudo', () => {
-  it('volta tudo ao máximo', () => {
-    let f = aplicar(skar(), 'VIDA', 'dano', 60);
+describe('descansoLongo', () => {
+  it('recupera 50% da Vida máxima e enche Stamina e Mana', () => {
+    let f = aplicar(skar(), 'VIDA', 'dano', 40); // 5 / 45
+    f = aplicar(f, 'STA', 'dano', 15);
     f = aplicar(f, 'MANA', 'dano', 5);
-    f = restaurarTudo(f, T + 9);
-    expect(f.atuais).toEqual({ VIDA: 45, STA: 20, MANA: f.maximos.MANA });
+    f = descansoLongo(f, T + 9);
+    // 50% de 45 = 22,5 → 23
+    expect(f.atuais).toEqual({ VIDA: 28, STA: 20, MANA: 12 });
     expect(f.atualizadoEm).toBe(T + 9);
+  });
+
+  it('não passa do máximo', () => {
+    const f = descansoLongo(aplicar(skar(), 'VIDA', 'dano', 10)); // 35 + 23 → 45
+    expect(f.atuais.VIDA).toBe(45);
+  });
+
+  it('a partir de Vida negativa', () => {
+    const f = descansoLongo(aplicar(skar(), 'VIDA', 'dano', 50)); // −5 + 23
+    expect(f.atuais.VIDA).toBe(18);
+  });
+
+  it('Vida acima do máximo (bônus temporário) não é reduzida', () => {
+    const f = skar();
+    const acima = { ...f, atuais: { ...f.atuais, VIDA: 50 } };
+    expect(descansoLongo(acima).atuais.VIDA).toBe(50);
+  });
+
+  it('metade de máximo ímpar arredonda para o mais próximo', () => {
+    const f = skar();
+    const r = descansoLongo({ ...f, maximos: { ...f.maximos, VIDA: 39 }, atuais: { ...f.atuais, VIDA: 0 } });
+    expect(r.atuais.VIDA).toBe(20); // 19,5 → 20
   });
 });

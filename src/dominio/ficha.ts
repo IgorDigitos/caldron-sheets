@@ -236,11 +236,20 @@ export function aplicar(
   };
 }
 
-/** Volta todos os recursos para o máximo (descanso longo). */
-export function restaurarTudo(ficha: Ficha, agora = Date.now()): Ficha {
+/** Fração da Vida máxima recuperada no descanso longo. */
+export const CURA_DESCANSO_LONGO = 0.5;
+
+/**
+ * Descanso longo: recupera 50% da Vida máxima (arredondado para o mais próximo, sem passar do
+ * máximo — vale também a partir de Vida negativa) e enche Stamina e Mana.
+ */
+export function descansoLongo(ficha: Ficha, agora = Date.now()): Ficha {
+  const { VIDA: maxVida, STA, MANA } = ficha.maximos;
+  const cura = Math.round(maxVida * CURA_DESCANSO_LONGO);
+  const vida = Math.max(ficha.atuais.VIDA, Math.min(maxVida, ficha.atuais.VIDA + cura));
   return {
     ...ficha,
-    atuais: { VIDA: ficha.maximos.VIDA, STA: ficha.maximos.STA, MANA: ficha.maximos.MANA },
+    atuais: { VIDA: vida, STA, MANA },
     atualizadoEm: agora,
   };
 }
