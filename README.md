@@ -5,7 +5,7 @@ e funcionando sem internet.
 
 - **Offline-first**: ficha, dano/cura, inventário com imagem e journal salvos no celular.
 - **Sync online**: as mudanças sobem sozinhas quando a conexão volta (Firebase).
-- **Mestre e Jogador** (etapa 5): a fórmula nunca sai do aparelho do Mestre.
+- **Mestre e Jogador**: o Mestre cria as contas e entrega as fichas; o servidor recusa o que o jogador não pode mudar.
 
 ## Começando
 
@@ -24,5 +24,5 @@ Comandos de teste e regras do projeto estão em [AGENTS.md](AGENTS.md).
 - [x] 2 · Ficha e recursos
 - [x] 3 · Inventário, imagens e journal
 - [x] 4 · Nuvem e sincronização
-- [ ] 5 · Papéis e segurança
+- [x] 5 · Papéis e segurança
 - [ ] 6 · Publicação

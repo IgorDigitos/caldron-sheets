@@ -955,3 +955,43 @@ h2 {
   font-size: 0.875rem;
   font-weight: 600;
 }
+
+/* Etapa 5: papéis */
+.campo-dono select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #120d16;
+  color: var(--fg);
+  font: inherit;
+  font-size: 1rem;
+}
+
+.valor-fixo {
+  display: inline-block;
+  min-width: 44px;
+  font-weight: 700;
+}
+
+.cartao-ficha .dono {
+  color: var(--accent);
+  font-size: 0.8125rem;
+}
+
+.lista-jogadores {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.lista-jogadores li {
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-weight: 600;
+}

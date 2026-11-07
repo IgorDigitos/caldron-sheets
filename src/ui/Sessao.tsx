@@ -13,13 +13,16 @@ import {
   usuarioDoEmail,
 } from '../nuvem/conta';
 import type { Nuvem } from '../nuvem/firebase';
+import { criarJogador, lerPapelJogador, listarJogadores, type Conta } from '../nuvem/contas';
 import { marcarMigracaoResolvida, migracaoResolvida, migrar } from '../nuvem/migracao';
+import type { InfoSessao } from './papel';
 
 type Estado =
   | { tipo: 'carregando' }
   | { tipo: 'deslogado'; temMestre: boolean | null }
   | { tipo: 'sem-acesso'; usuario: User }
-  | { tipo: 'mestre'; usuario: User };
+  | { tipo: 'mestre'; usuario: User }
+  | { tipo: 'jogador'; usuario: User };
 
 interface Props {
   nuvem: Nuvem;
@@ -46,7 +49,13 @@ export function Sessao({ nuvem, repoLocal }: Props) {
         setEstado({ tipo: 'deslogado', temMestre: soube ? mestreUid !== null : null });
         return;
       }
-      setEstado(mestreUid === usuario.uid ? { tipo: 'mestre', usuario } : { tipo: 'sem-acesso', usuario });
+      if (mestreUid === usuario.uid) {
+        setEstado({ tipo: 'mestre', usuario });
+        return;
+      }
+      const papel = await lerPapelJogador(nuvem.db, usuario.uid).catch(() => null);
+      if (minha !== rodada.current) return;
+      setEstado(papel === 'jogador' ? { tipo: 'jogador', usuario } : { tipo: 'sem-acesso', usuario });
     },
     [nuvem],
   );
@@ -62,8 +71,8 @@ export function Sessao({ nuvem, repoLocal }: Props) {
       <main class="pagina home">
         <h1>Caldron Sheets</h1>
         <p>
-          A conta <strong>{usuarioDoEmail(estado.usuario.email)}</strong> ainda não tem acesso. Contas de jogador chegam
-          na próxima etapa.
+          A conta <strong>{usuarioDoEmail(estado.usuario.email)}</strong> não tem acesso a esta campanha. Peça ao
+          Mestre para criar a sua conta de jogador.
         </p>
         <button type="button" class="btn" onClick={() => void sair(nuvem.auth)}>
           Sair
@@ -71,7 +80,29 @@ export function Sessao({ nuvem, repoLocal }: Props) {
       </main>
     );
   }
+  if (estado.tipo === 'jogador') return <AreaJogador nuvem={nuvem} usuario={estado.usuario} />;
   return <AreaMestre nuvem={nuvem} usuario={estado.usuario} repoLocal={repoLocal} />;
+}
+
+function AreaJogador({ nuvem, usuario }: { nuvem: Nuvem; usuario: User }) {
+  const repo = useMemo(
+    () => new RepositorioFirestore(nuvem.db, mensagemSyncJogador, { donoUid: usuario.uid }),
+    [nuvem, usuario.uid],
+  );
+  const [sync, setSync] = useState<EstadoSync>({ pendentes: 0 });
+  useEffect(() => repo.observar(setSync), [repo]);
+  const sessao = useMemo<InfoSessao>(() => ({ papel: 'jogador', uid: usuario.uid, jogadores: [] }), [usuario.uid]);
+
+  return (
+    <App
+      repo={repo}
+      sync={sync}
+      sessao={sessao}
+      onLimparErroSync={() => repo.limparErro()}
+      usuario={usuarioDoEmail(usuario.email)}
+      onSair={() => void sair(nuvem.auth)}
+    />
+  );
 }
 
 function AreaMestre({ nuvem, usuario, repoLocal }: { nuvem: Nuvem; usuario: User; repoLocal?: RepositorioFichas }) {
@@ -79,10 +110,31 @@ function AreaMestre({ nuvem, usuario, repoLocal }: { nuvem: Nuvem; usuario: User
   const [sync, setSync] = useState<EstadoSync>({ pendentes: 0 });
   useEffect(() => repo.observar(setSync), [repo]);
 
+  const [jogadores, setJogadores] = useState<Conta[]>([]);
+  const carregarJogadores = useCallback(() => listarJogadores(nuvem.db).then(setJogadores).catch(() => {}), [nuvem]);
+  useEffect(() => {
+    void carregarJogadores();
+  }, [carregarJogadores]);
+
+  const sessao = useMemo<InfoSessao>(
+    () => ({
+      papel: 'mestre',
+      uid: usuario.uid,
+      jogadores,
+      criarJogador: async (u, s) => {
+        const conta = await criarJogador(nuvem, u, s);
+        await carregarJogadores();
+        return conta;
+      },
+    }),
+    [usuario.uid, jogadores, nuvem, carregarJogadores],
+  );
+
   return (
     <App
       repo={repo}
       sync={sync}
+      sessao={sessao}
       onLimparErroSync={() => repo.limparErro()}
       usuario={usuarioDoEmail(usuario.email)}
       onSair={() => void sair(nuvem.auth)}
@@ -98,6 +150,14 @@ function AreaMestre({ nuvem, usuario, repoLocal }: { nuvem: Nuvem; usuario: User
 export function mensagemSync(e: unknown): string {
   if ((e as { code?: string })?.code === 'permission-denied') {
     return 'Uma alteração feita aqui foi descartada porque outro aparelho fez uma edição mais nova. Abra a ficha de novo para ver a versão atual.';
+  }
+  return `Erro ao sincronizar: ${mensagemErro(e)}`;
+}
+
+/** Para o jogador, uma recusa pode ser "última edição ganha" ou algo que só o Mestre pode mudar. */
+export function mensagemSyncJogador(e: unknown): string {
+  if ((e as { code?: string })?.code === 'permission-denied') {
+    return 'Uma alteração feita aqui foi recusada pelo servidor: outro aparelho fez uma edição mais nova, ou é algo que só o Mestre pode mudar. Abra a ficha de novo para ver a versão atual.';
   }
   return `Erro ao sincronizar: ${mensagemErro(e)}`;
 }

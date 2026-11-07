@@ -119,6 +119,21 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
   não é apagado.
 - Publicar regras: `npx firebase deploy --only firestore:rules --project caldron-sheets`.
 
+## Papéis: Mestre e Jogador (etapa 5)
+
+- Um Mestre por campanha (`campanha/config`). Ele cria as contas de jogador na tela **Jogadores**
+  (`src/nuvem/contas.ts` usa uma segunda instância do Firebase para não deslogar o Mestre) e grava
+  `usuarios/{uid} { usuario, papel: 'jogador' }`. A ficha ganha `donoUid` (escolhido em "Editar ficha").
+- Jogador: vê só as fichas com `donoUid` dele (o repositório filtra; as regras exigem o filtro).
+  Pode: recursos, extra, descanso, histórico, carteira, inventário, journal (tudo) e **extra/perda** dos
+  atributos. Não pode: base dos atributos, nome, raça, classe, nível, dono, criar/apagar ficha.
+- O app do jogador recalcula os máximos na hora (as fórmulas vão no app) e o **servidor refaz a conta**
+  em `firestore.rules` (`maximosConferem`). ⚠️ Mudou uma fórmula em `src/rules/caldronis.ts`? Mude
+  `maximosConferem` junto e rode `npm run test:nuvem` (`regrasJogador.nuvem.test.ts` monta os dados
+  com as funções do app, então pega divergência).
+- Interface: `ContextoSessao` (`src/ui/papel.tsx`) diz o papel às telas; sem contexto = Mestre.
+- Trocar senha de jogador: só pelo console do Firebase (sem Admin SDK no plano gratuito).
+
 ## Estrutura
 
 ```

@@ -27,6 +27,7 @@ import {
 import { formatar, type ErroCampo } from '../rules/motor';
 import { exportarFicha, nomeArquivo } from '../dados/exportacao';
 import { BarraRecurso } from './BarraRecurso';
+import { useSessao } from './papel';
 import { AbasFicha, Cabecalho, Entrada, Hora, NaoEncontrada, useFicha } from './comum';
 
 const HISTORICO_VISIVEL = 6;
@@ -41,6 +42,8 @@ interface Props {
 
 export function FichaTela({ repo, id }: Props) {
   const [ficha, setFicha] = useFicha(repo, id);
+  const { papel, jogadores } = useSessao();
+  const ehMestre = papel === 'mestre';
   const [erros, setErros] = useState<ErroCampo[]>([]);
   const [erroSalvar, setErroSalvar] = useState('');
   const [verTodas, setVerTodas] = useState(false);
@@ -89,6 +92,13 @@ export function FichaTela({ repo, id }: Props) {
     } catch (e) {
       setErroSalvar(`Não foi possível exportar: ${(e as Error).message}`);
     }
+  };
+
+  const mudarDono = (uid: string) => {
+    const nova: Ficha = { ...ficha, atualizadoEm: Date.now() };
+    if (uid) nova.donoUid = uid;
+    else delete nova.donoUid;
+    void salvar(nova);
   };
 
   const mudarTexto = (campo: 'nome' | 'raca' | 'classe', valor: string) => {
@@ -182,14 +192,29 @@ export function FichaTela({ repo, id }: Props) {
       </section>
 
       <details class="editar">
-        <summary>Editar ficha</summary>
+        <summary>{ehMestre ? 'Editar ficha' : 'Atributos'}</summary>
 
-        <div class="campos-texto">
-          <CampoTexto rotulo="Nome" valor={ficha.nome} onMudar={(v) => mudarTexto('nome', v)} />
-          <CampoTexto rotulo="Raça" valor={ficha.raca} onMudar={(v) => mudarTexto('raca', v)} />
-          <CampoTexto rotulo="Classe" valor={ficha.classe} onMudar={(v) => mudarTexto('classe', v)} />
-          <CampoNumero rotulo="Nível" valor={ficha.nivel} min={1} onMudar={(v) => mudar({ tipo: 'nivel' }, v)} />
-        </div>
+        {ehMestre ? (
+          <div class="campos-texto">
+            <CampoTexto rotulo="Nome" valor={ficha.nome} onMudar={(v) => mudarTexto('nome', v)} />
+            <CampoTexto rotulo="Raça" valor={ficha.raca} onMudar={(v) => mudarTexto('raca', v)} />
+            <CampoTexto rotulo="Classe" valor={ficha.classe} onMudar={(v) => mudarTexto('classe', v)} />
+            <CampoNumero rotulo="Nível" valor={ficha.nivel} min={1} onMudar={(v) => mudar({ tipo: 'nivel' }, v)} />
+            <label class="campo campo-dono">
+              <span>Jogador</span>
+              <select value={ficha.donoUid ?? ''} onChange={(e) => mudarDono(e.currentTarget.value)}>
+                <option value="">Ninguém (só o Mestre)</option>
+                {jogadores.map((j) => (
+                  <option key={j.uid} value={j.uid}>
+                    {j.usuario}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : (
+          <p class="vazio">Você pode mudar o extra e a perda. A base, o nível e o nome são do Mestre.</p>
+        )}
 
         {erros.length > 0 && (
           <ul class="erro" role="alert">
@@ -219,13 +244,19 @@ export function FichaTela({ repo, id }: Props) {
                   <th scope="row">{NOMES_ATRIBUTOS[a]}</th>
                   {(['base', 'extra', 'perda'] as const).map((campo) => (
                     <td key={campo}>
-                      <CampoNumero
-                        rotulo={`${NOMES_ATRIBUTOS[a]} ${campo}`}
-                        oculto
-                        valor={v[campo] ?? 0}
-                        min={campo === 'base' ? undefined : 0}
-                        onMudar={(n) => mudar({ tipo: 'atributo', atributo: a, parte: campo }, n)}
-                      />
+                      {campo === 'base' && !ehMestre ? (
+                        <span class="valor-fixo" data-testid={`base-${a}`}>
+                          {formatar(v.base)}
+                        </span>
+                      ) : (
+                        <CampoNumero
+                          rotulo={`${NOMES_ATRIBUTOS[a]} ${campo}`}
+                          oculto
+                          valor={v[campo] ?? 0}
+                          min={campo === 'base' ? undefined : 0}
+                          onMudar={(n) => mudar({ tipo: 'atributo', atributo: a, parte: campo }, n)}
+                        />
+                      )}
                     </td>
                   ))}
                   <td data-testid={`atual-${a}`}>{formatar(valorAtual(v))}</td>
