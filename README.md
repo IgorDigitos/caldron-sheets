@@ -7,6 +7,8 @@ e funcionando sem internet.
 - **Sync online**: as mudanças sobem sozinhas quando a conexão volta (Firebase).
 - **Mestre e Jogador**: o Mestre cria as contas e entrega as fichas; o servidor recusa o que o jogador não pode mudar.
 
+**Abrir o app:** https://caldron-sheets.web.app — no Chrome do Android, menu ⋮ → *Instalar app*.
+
 ## Começando
 
 ```bash
@@ -25,4 +27,4 @@ Comandos de teste e regras do projeto estão em [AGENTS.md](AGENTS.md).
 - [x] 3 · Inventário, imagens e journal
 - [x] 4 · Nuvem e sincronização
 - [x] 5 · Papéis e segurança
-- [ ] 6 · Publicação
+- [x] 6 · Publicação
