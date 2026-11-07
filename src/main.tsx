@@ -3,10 +3,12 @@ import { registerSW } from 'virtual:pwa-register';
 import { RepositorioDexie } from './dados/dexie';
 import { USAR_EMULADOR } from './nuvem/config';
 import { iniciarNuvem } from './nuvem/firebase';
+import { pedirArmazenamentoPersistente } from './plataforma/armazenamento';
 import { Sessao } from './ui/Sessao';
 import './styles.css';
 
 registerSW({ immediate: true });
+void pedirArmazenamentoPersistente();
 
 const nuvem = iniciarNuvem({ emulador: USAR_EMULADOR, persistente: true });
 

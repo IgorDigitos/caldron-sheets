@@ -33,6 +33,7 @@ test('manifesto é instalável', async ({ request }) => {
   expect(sizes).toContain('192x192');
   expect(sizes).toContain('512x512');
   for (const icon of manifest.icons) {
+    expect(icon.src).toBeTruthy();
     expect((await request.get(`/${icon.src}`)).ok()).toBe(true);
   }
 });

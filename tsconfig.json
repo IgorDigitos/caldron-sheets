@@ -15,5 +15,5 @@
     "noEmit": true,
     "types": ["vite/client", "vite-plugin-pwa/client", "node"]
   },
-  "include": ["src", "e2e", "scripts", "vite.config.ts", "vitest.nuvem.config.ts", "playwright.config.ts", "eslint.config.js"]
+  "include": ["src", "e2e", "e2e-producao", "scripts", "vite.config.ts", "vitest.nuvem.config.ts", "playwright.config.ts", "playwright.producao.config.ts", "eslint.config.js"]
 }
