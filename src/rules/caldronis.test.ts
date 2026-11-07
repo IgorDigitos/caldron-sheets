@@ -55,8 +55,9 @@ describe('Caldronis — atributo atual', () => {
     const v = valores(comAtributo(SKAR, 'CON', { extra: 2 }));
     // CON 7 → Corpo (8+2+7)/3 = 17/3
     expect(v.CORPO).toBeCloseTo(17 / 3);
-    expect(v.VIDA).toBeCloseTo(2 * 5 + (17 / 3) * 2 + 7 * 5);
-    expect(v.STA).toBeCloseTo(5 + (17 / 3) * 2 + 7);
+    // Vida 56,33 → 56 · STA 23,33 → 23 (arredondadas para o mais próximo)
+    expect(v.VIDA).toBe(56);
+    expect(v.STA).toBe(23);
     expect(v.DEF_NATURAL).toBeCloseTo(17 / 3 + 3.5);
   });
 
@@ -96,5 +97,37 @@ describe('Caldronis — fórmulas customizadas pelo Mestre', () => {
     const r = calcularCaldronis(SKAR, { ...FORMULAS_CALDRONIS, VIDA: 'NIVEL*5 + ' });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.erros[0]).toMatchObject({ campo: 'VIDA' });
+  });
+});
+
+describe('Caldronis — Vida, STA e Mana máximas são inteiras', () => {
+  it.each([
+    // FOR/DES/CON/INT/SAB/CAR/nível que geram decimais na fórmula
+    [{ FOR: 3, DES: 3, CON: 4 }, 2, 'VIDA'], // Corpo 3,33 → Vida 10+6,67+20 = 36,67 → 37
+    [{ FOR: 3, DES: 3, CON: 4 }, 2, 'STA'], // 5 + 6,67 + 4 = 15,67 → 16
+  ] as const)('%o nível %i: %s sem decimais', (attrs, nivel, campo) => {
+    const ficha: FichaRegras = {
+      ...SKAR,
+      nivel,
+      atributos: { ...SKAR.atributos, FOR: { base: attrs.FOR }, DES: { base: attrs.DES }, CON: { base: attrs.CON } },
+    };
+    const v = valores(ficha);
+    expect(Number.isInteger(v[campo])).toBe(true);
+  });
+
+  it('arredonda para o mais próximo, ,5 sobe', () => {
+    // Corpo 3,33: Vida = 10 + 6,67 + 20 = 36,67 → 37; STA = 15,67 → 16
+    const base = { ...SKAR, nivel: 2, atributos: { ...SKAR.atributos, FOR: { base: 3 }, DES: { base: 3 }, CON: { base: 4 } } };
+    expect(valores(base).VIDA).toBe(37);
+    expect(valores(base).STA).toBe(16);
+    // Mente 2,5 (INT 2, SAB 3, CAR 2,5): Mana = 5 + 7,5 = 12,5 → 13
+    const meio = { ...SKAR, atributos: { ...SKAR.atributos, CAR: { base: 2.5 } } };
+    expect(valores(meio).MANA).toBe(13);
+  });
+
+  it('Corpo, Mente e defesas continuam com decimais', () => {
+    const v = valores({ ...SKAR, atributos: { ...SKAR.atributos, CON: { base: 5, extra: 2 } } });
+    expect(v.CORPO).toBeCloseTo(17 / 3);
+    expect(Number.isInteger(v.DEF_NATURAL)).toBe(false);
   });
 });

@@ -13,16 +13,21 @@
     "coverage": "vitest run --coverage",
     "e2e": "playwright test",
     "icons": "node scripts/gen-icons.mjs",
-    "check": "npm run lint && npm run typecheck && npm test && npm run e2e"
+    "check": "npm run lint && npm run typecheck && npm test && npm run e2e",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-caldron",
+    "test:nuvem": "firebase emulators:exec --only auth,firestore --project demo-caldron \"vitest run --config vitest.nuvem.config.ts\"",
+    "build:emulador": "tsc && vite build --mode emulador"
   },
   "type": "module",
   "private": true,
   "dependencies": {
     "dexie": "^4.4.7",
+    "firebase": "^13.2.0",
     "preact": "^11.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^6.0.0",
     "@playwright/test": "^1.65.0",
     "@preact/preset-vite": "^2.10.6",
     "@testing-library/preact": "^3.2.6",
@@ -30,6 +35,7 @@
     "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.14.0",
     "fake-indexeddb": "^6.2.7",
+    "firebase-tools": "^15.35.0",
     "globals": "^17.14.0",
     "jsdom": "^29.1.1",
     "typescript": "^6.0.3",

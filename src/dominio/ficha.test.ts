@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   alterar,
   aplicar,
+  definirExtra,
+  extraDe,
+  atualizarParaRegrasAtuais,
   criarFicha,
   descreverEfeitos,
   descreverEntrada,
@@ -10,7 +13,7 @@ import {
   nomeAlvo,
   novoId,
   recalcular,
-  restaurarTudo,
+  descansoLongo,
   ValorInvalido,
   type Ficha,
 } from './ficha';
@@ -152,7 +155,7 @@ describe('recalcular', () => {
     const f = skar();
     const r = recalcular({ ...f, atributos: { ...f.atributos, CON: { base: 5, extra: 2 } } }, T + 5);
     if (!r.ok) throw new Error('falhou');
-    expect(r.ficha.maximos.VIDA).toBeCloseTo(56.333, 2);
+    expect(r.ficha.maximos.VIDA).toBe(56);
     expect(r.ficha.atuais.VIDA).toBe(45);
     expect(r.ficha.atualizadoEm).toBe(T + 5);
   });
@@ -190,12 +193,12 @@ describe('alterar (histórico de atributos)', () => {
     const [e] = r.ficha.alteracoes;
     expect(e).toMatchObject({ alvo: CON_EXTRA, de: 0, para: 2, em: T + 10 });
     expect(e!.efeitos.VIDA!.de).toBe(45);
-    expect(e!.efeitos.VIDA!.para).toBeCloseTo(56.333, 2);
+    expect(e!.efeitos.VIDA!.para).toBe(56);
     expect(e!.efeitos.MANA).toBeUndefined();
     expect(nomeAlvo(e!.alvo)).toBe('Constituição extra');
-    expect(descreverEfeitos(e!)).toBe('Vida máx. 45 → 56,3 · Stamina máx. 20 → 23,3');
+    expect(descreverEfeitos(e!)).toBe('Vida máx. 45 → 56 · Stamina máx. 20 → 23');
     expect(r.ficha.atributos.CON).toEqual({ base: 5, extra: 2 });
-    expect(r.ficha.maximos.VIDA).toBeCloseTo(56.333, 2);
+    expect(r.ficha.maximos.VIDA).toBe(56);
   });
 
   it('nível', () => {
@@ -248,12 +251,144 @@ describe('alterar (histórico de atributos)', () => {
   });
 });
 
-describe('restaurarTudo', () => {
-  it('volta tudo ao máximo', () => {
-    let f = aplicar(skar(), 'VIDA', 'dano', 60);
+describe('atualizarParaRegrasAtuais (fichas salvas antes do arredondamento)', () => {
+  const antiga = (): Ficha => {
+    const f = skar();
+    // Como o Rogerin estava salvo: máximos com decimais.
+    return {
+      ...f,
+      maximos: { ...f.maximos, VIDA: 38.7, STA: 16.7, MANA: 16 },
+      atuais: { VIDA: 12, STA: 16.7, MANA: 8 },
+    };
+  };
+
+  it('recalcula os máximos; quem estava cheio continua cheio', () => {
+    const f = atualizarParaRegrasAtuais(antiga(), T + 1)!;
+    expect(f.maximos.VIDA).toBe(45);
+    expect(f.maximos.STA).toBe(20);
+    expect(f.atuais).toEqual({ VIDA: 12, STA: 20, MANA: 8 });
+    expect(f.atualizadoEm).toBe(T + 1);
+  });
+
+  it('ficha já em dia não muda', () => {
+    expect(atualizarParaRegrasAtuais(skar())).toBeNull();
+  });
+
+  it('ficha com atributo inválido não é mexida', () => {
+    const f = skar();
+    expect(atualizarParaRegrasAtuais({ ...f, atributos: { ...f.atributos, FOR: { base: Number.NaN } } })).toBeNull();
+  });
+});
+
+describe('extra (temporário)', () => {
+  it('definir extra registra no histórico; mesmo valor não registra', () => {
+    let f = definirExtra(skar(), 'VIDA', 10, T + 1);
+    expect(extraDe(f, 'VIDA')).toBe(10);
+    expect(descreverEntrada(f.historico[0]!)).toBe('extra 0 → 10');
+    expect(f.atualizadoEm).toBe(T + 1);
+    const igual = definirExtra(f, 'VIDA', 10);
+    expect(igual).toBe(f);
+    f = definirExtra(f, 'VIDA', 4);
+    expect(descreverEntrada(f.historico[0]!)).toBe('extra 10 → 4');
+  });
+
+  it('dano tira primeiro do extra', () => {
+    let f = definirExtra(skar(), 'VIDA', 10);
+    f = aplicar(f, 'VIDA', 'dano', 6);
+    expect(extraDe(f, 'VIDA')).toBe(4);
+    expect(f.atuais.VIDA).toBe(45);
+    expect(descreverEntrada(f.historico[0]!)).toBe('−6 dano (6 do extra)');
+    f = aplicar(f, 'VIDA', 'dano', 9); // 4 do extra + 5 da Vida
+    expect(extraDe(f, 'VIDA')).toBe(0);
+    expect(f.atuais.VIDA).toBe(40);
+    expect(f.historico[0]).toMatchObject({ valor: 9, efetivo: -5, doExtra: 4 });
+    expect(descreverEntrada(f.historico[0]!)).toBe('−9 dano (4 do extra)');
+  });
+
+  it('dano sem extra não registra "do extra"', () => {
+    const f = aplicar(skar(), 'VIDA', 'dano', 3);
+    expect('doExtra' in f.historico[0]!).toBe(false);
+    expect(f.extras).toBeUndefined();
+  });
+
+  it('gastar Stamina e Mana também consome o extra primeiro', () => {
+    let f = definirExtra(definirExtra(skar(), 'STA', 5), 'MANA', 2);
+    f = aplicar(f, 'STA', 'dano', 7);
+    f = aplicar(f, 'MANA', 'dano', 2);
+    expect(f.atuais.STA).toBe(18);
+    expect(extraDe(f, 'STA')).toBe(0);
+    expect(f.atuais.MANA).toBe(12);
+    expect(extraDe(f, 'MANA')).toBe(0);
+    expect(descreverEntrada(f.historico[1]!)).toBe('−7 gasto (5 do extra)');
+  });
+
+  it('cura não recupera o extra', () => {
+    let f = definirExtra(skar(), 'VIDA', 5);
+    f = aplicar(f, 'VIDA', 'dano', 15); // 5 extra + 10 Vida
+    f = aplicar(f, 'VIDA', 'cura', 100);
+    expect(f.atuais.VIDA).toBe(45);
+    expect(extraDe(f, 'VIDA')).toBe(0);
+  });
+
+  it.each([-1, Number.NaN, Infinity])('extra inválido (%d) é recusado', (v) => {
+    expect(() => definirExtra(skar(), 'VIDA', v)).toThrow(ValorInvalido);
+  });
+
+  it('ficha antiga sem extras', () => {
+    expect(extraDe(skar(), 'MANA')).toBe(0);
+  });
+});
+
+describe('descansoLongo', () => {
+  it('registra no histórico cada recurso que subiu', () => {
+    let f = aplicar(skar(), 'VIDA', 'dano', 40);
     f = aplicar(f, 'MANA', 'dano', 5);
-    f = restaurarTudo(f, T + 9);
-    expect(f.atuais).toEqual({ VIDA: 45, STA: 20, MANA: f.maximos.MANA });
+    f = descansoLongo(f, T + 9);
+    expect(f.historico.slice(0, 2).map((e) => [e.recurso, descreverEntrada(e)])).toEqual([
+      ['VIDA', '+23 descanso longo'],
+      ['MANA', '+5 descanso longo'],
+    ]);
+    expect(f.historico[2]!.tipo).toBe('dano'); // STA estava cheia: sem linha
+  });
+
+  it('com tudo cheio não registra nada', () => {
+    expect(descansoLongo(skar()).historico).toEqual([]);
+  });
+
+  it('não mexe no extra', () => {
+    const f = descansoLongo(definirExtra(aplicar(skar(), 'VIDA', 'dano', 10), 'VIDA', 7));
+    expect(extraDe(f, 'VIDA')).toBe(7);
+  });
+
+  it('recupera 50% da Vida máxima e enche Stamina e Mana', () => {
+    let f = aplicar(skar(), 'VIDA', 'dano', 40); // 5 / 45
+    f = aplicar(f, 'STA', 'dano', 15);
+    f = aplicar(f, 'MANA', 'dano', 5);
+    f = descansoLongo(f, T + 9);
+    // 50% de 45 = 22,5 → 23
+    expect(f.atuais).toEqual({ VIDA: 28, STA: 20, MANA: 12 });
     expect(f.atualizadoEm).toBe(T + 9);
+  });
+
+  it('não passa do máximo', () => {
+    const f = descansoLongo(aplicar(skar(), 'VIDA', 'dano', 10)); // 35 + 23 → 45
+    expect(f.atuais.VIDA).toBe(45);
+  });
+
+  it('a partir de Vida negativa', () => {
+    const f = descansoLongo(aplicar(skar(), 'VIDA', 'dano', 50)); // −5 + 23
+    expect(f.atuais.VIDA).toBe(18);
+  });
+
+  it('Vida acima do máximo (bônus temporário) não é reduzida', () => {
+    const f = skar();
+    const acima = { ...f, atuais: { ...f.atuais, VIDA: 50 } };
+    expect(descansoLongo(acima).atuais.VIDA).toBe(50);
+  });
+
+  it('metade de máximo ímpar arredonda para o mais próximo', () => {
+    const f = skar();
+    const r = descansoLongo({ ...f, maximos: { ...f.maximos, VIDA: 39 }, atuais: { ...f.atuais, VIDA: 0 } });
+    expect(r.atuais.VIDA).toBe(20); // 19,5 → 20
   });
 });

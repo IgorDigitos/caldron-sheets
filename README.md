@@ -4,7 +4,7 @@ Ficha, inventário e journal de RPG para o sistema **Caldronis**, instalável no
 e funcionando sem internet.
 
 - **Offline-first**: ficha, dano/cura, inventário com imagem e journal salvos no celular.
-- **Sync online** (etapa 4): as mudanças sobem quando a conexão volta.
+- **Sync online**: as mudanças sobem sozinhas quando a conexão volta (Firebase).
 - **Mestre e Jogador** (etapa 5): a fórmula nunca sai do aparelho do Mestre.
 
 ## Começando
@@ -23,6 +23,6 @@ Comandos de teste e regras do projeto estão em [AGENTS.md](AGENTS.md).
 - [x] 1 · Motor de regras
 - [x] 2 · Ficha e recursos
 - [x] 3 · Inventário, imagens e journal
-- [ ] 4 · Nuvem e sincronização
+- [x] 4 · Nuvem e sincronização
 - [ ] 5 · Papéis e segurança
 - [ ] 6 · Publicação

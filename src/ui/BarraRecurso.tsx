@@ -1,12 +1,17 @@
 import { useState } from 'preact/hooks';
 import { NOMES_RECURSOS, type Recurso, type TipoMudanca } from '../dominio/ficha';
 import { formatar } from '../rules/motor';
+import { Entrada } from './comum';
 
 interface Props {
   recurso: Recurso;
   atual: number;
   max: number;
+  /** Extra temporário (efeito de item, magia…). */
+  extra?: number;
   onAplicar: (tipo: TipoMudanca, valor: number) => void;
+  /** Ajuste manual do extra. Sem isto, o campo não aparece. */
+  onExtra?: (valor: number) => void;
 }
 
 const BOTOES: Record<Recurso, Record<TipoMudanca, string>> = {
@@ -15,7 +20,7 @@ const BOTOES: Record<Recurso, Record<TipoMudanca, string>> = {
   MANA: { dano: 'Gastar', cura: 'Recuperar' },
 };
 
-export function BarraRecurso({ recurso, atual, max, onAplicar }: Props) {
+export function BarraRecurso({ recurso, atual, max, extra = 0, onAplicar, onExtra }: Props) {
   const [texto, setTexto] = useState('');
   const [erro, setErro] = useState('');
   const nome = NOMES_RECURSOS[recurso];
@@ -37,8 +42,15 @@ export function BarraRecurso({ recurso, atual, max, onAplicar }: Props) {
     <section class={`recurso recurso-${recurso.toLowerCase()}`} aria-label={nome}>
       <div class="recurso-topo">
         <span class="recurso-nome">{nome}</span>
-        <span class="recurso-valor" data-testid={`valor-${recurso}`} data-negativo={atual < 0}>
-          {formatar(atual)} / {formatar(max)}
+        <span class="recurso-valores">
+          {extra > 0 && (
+            <span class="selo-extra" data-testid={`extra-${recurso}`}>
+              +{formatar(extra)} extra
+            </span>
+          )}
+          <span class="recurso-valor" data-testid={`valor-${recurso}`} data-negativo={atual < 0}>
+            {formatar(atual)} / {formatar(max)}
+          </span>
         </span>
       </div>
       <div
@@ -74,6 +86,31 @@ export function BarraRecurso({ recurso, atual, max, onAplicar }: Props) {
           {BOTOES[recurso].cura}
         </button>
       </div>
+      {onExtra && (
+        <div class="campo-extra">
+          <label>
+            <span>
+              Extra<span class="sr-only"> de {nome}</span>
+            </span>
+            <Entrada
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="any"
+              valor={String(extra)}
+              onConfirmar={(t) => {
+                const v = t.trim() === '' ? 0 : Number(t);
+                if (!Number.isFinite(v) || v < 0) {
+                  setErro('O extra precisa ser um número maior ou igual a zero');
+                  return false;
+                }
+                setErro('');
+                onExtra(v);
+              }}
+            />
+          </label>
+        </div>
+      )}
       {erro && (
         <p class="erro" role="alert">
           {erro}

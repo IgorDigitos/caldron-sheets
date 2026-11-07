@@ -35,6 +35,11 @@ describe('parser — funções', () => {
     ['max(4, 2, 9)', 9],
     ['int(2.9)', 2],
     ['int(-0.5)', -1],
+    ['arred(38.7)', 39],
+    ['arred(38.4)', 38],
+    ['arred(38.5)', 39],
+    ['arred(7/3*3 + 0.5)', 8], // 7,5000000001 por ponto flutuante não engana
+    ['arred(1.005*2)', 2],
     ['MEDIA(2, 4)', 3],
     ['max(1, media(2, 4) * 2)', 6],
   ])('%s = %d', (texto, esperado) => {

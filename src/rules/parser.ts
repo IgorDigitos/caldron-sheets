@@ -31,6 +31,8 @@ export const FUNCOES = {
   max: { minArgs: 1, maxArgs: Infinity, calc: (a) => Math.max(...a) },
   // Igual ao INT() do Excel: arredonda para baixo.
   int: { minArgs: 1, maxArgs: 1, calc: (a) => Math.floor(a[0]!) },
+  // Inteiro mais próximo; ,5 sobe. O toFixed tira o lixo de ponto flutuante (38,4999999 → 38,5).
+  arred: { minArgs: 1, maxArgs: 1, calc: (a) => Math.round(Number(a[0]!.toFixed(9))) },
 } satisfies Record<string, DefFuncao>;
 
 export type NomeFuncao = keyof typeof FUNCOES;

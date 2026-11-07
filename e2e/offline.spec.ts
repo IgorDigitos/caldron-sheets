@@ -1,23 +1,26 @@
 import { expect, test } from '@playwright/test';
+import { abrirComoNovoMestre, esperarServiceWorker, limparEmulador } from './ajuda';
 
-test('abre sem rede depois da primeira visita', async ({ page, context }) => {
+test.beforeEach(limparEmulador);
+
+test('tela de login aparece sem rede', async ({ page, context }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Caldron Sheets' })).toBeVisible();
+  await esperarServiceWorker(page);
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Caldron Sheets' })).toBeVisible();
+  await expect(page.getByLabel('Usuário')).toBeVisible();
+});
 
-  // Espera o service worker assumir a página (precache pronto).
-  await page.evaluate(async () => {
-    await navigator.serviceWorker.ready;
-    if (!navigator.serviceWorker.controller) {
-      await new Promise((resolve) =>
-        navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }),
-      );
-    }
-  });
+test('logado, abre sem rede depois da primeira visita', async ({ page, context }) => {
+  await abrirComoNovoMestre(page);
+  await esperarServiceWorker(page);
 
   await context.setOffline(true);
   await page.reload();
 
-  await expect(page.getByRole('heading', { name: 'Caldron Sheets' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Nova ficha' })).toBeVisible();
   await expect(page.getByTestId('status')).toHaveAttribute('data-online', 'false');
 });
 

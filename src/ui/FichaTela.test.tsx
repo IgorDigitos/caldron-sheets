@@ -56,13 +56,16 @@ describe('FichaTela', () => {
     expect(screen.getByText('−30 gasto')).toBeTruthy();
   });
 
-  it('descanso restaura tudo', async () => {
-    await montar();
-    aplicarNa('Vida', 'Quantidade de Vida', '10', 'Dano');
+  it('descanso longo: metade da Vida máxima, Stamina e Mana cheias', async () => {
+    const { repo, ficha } = await montar();
+    aplicarNa('Vida', 'Quantidade de Vida', '40', 'Dano');
+    aplicarNa('Stamina', 'Quantidade de Stamina', '15', 'Gastar');
     aplicarNa('Mana', 'Quantidade de Mana', '5', 'Gastar');
-    fireEvent.click(screen.getByRole('button', { name: 'Descanso: restaurar tudo' }));
-    expect(screen.getByTestId('valor-VIDA').textContent).toBe('45 / 45');
+    fireEvent.click(screen.getByRole('button', { name: 'Descanso longo' }));
+    expect(screen.getByTestId('valor-VIDA').textContent).toBe('28 / 45');
+    expect(screen.getByTestId('valor-STA').textContent).toBe('20 / 20');
     expect(screen.getByTestId('valor-MANA').textContent).toBe('12 / 12');
+    await waitFor(async () => expect((await repo.obter(ficha.id))!.atuais.VIDA).toBe(28));
   });
 
   it('histórico vazio avisa', async () => {
@@ -75,8 +78,8 @@ describe('FichaTela', () => {
     const con = screen.getByLabelText('Constituição extra');
     fireEvent.change(con, { target: { value: '2' } });
     expect(screen.getByTestId('atual-CON').textContent).toBe('7');
-    expect(screen.getByTestId('valor-VIDA').textContent).toBe('45 / 56,3');
-    await waitFor(async () => expect((await repo.obter(ficha.id))!.maximos.VIDA).toBeCloseTo(56.33, 1));
+    expect(screen.getByTestId('valor-VIDA').textContent).toBe('45 / 56');
+    await waitFor(async () => expect((await repo.obter(ficha.id))!.maximos.VIDA).toBe(56));
   });
 
   it('perder CON corta a Vida atual', async () => {
@@ -125,7 +128,7 @@ describe('FichaTela', () => {
     expect(itens).toHaveLength(2);
     expect(itens[0]!.textContent).toContain('Nível 2 → 3');
     expect(itens[1]!.textContent).toContain('Constituição extra 0 → 2');
-    expect(itens[1]!.textContent).toContain('Vida máx. 45 → 56,3');
+    expect(itens[1]!.textContent).toContain('Vida máx. 45 → 56');
     expect(itens[0]!.className).toBe('alt-subiu');
 
     await waitFor(async () => expect((await repo.obter(ficha.id))!.alteracoes).toHaveLength(2));
@@ -202,6 +205,41 @@ describe('FichaTela', () => {
     expect(screen.getByRole('tab', { name: 'Ficha' }).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('tab', { name: 'Inventário' }).getAttribute('href')).toBe(`#/ficha/${ficha.id}/inventario`);
     expect(screen.getByRole('tab', { name: 'Journal' }).getAttribute('href')).toBe(`#/ficha/${ficha.id}/journal`);
+  });
+
+  it('extra de Vida: dano tira do extra primeiro, tudo vai pro histórico e é salvo', async () => {
+    const { repo, ficha } = await montar();
+    const vida = screen.getByRole('region', { name: 'Vida' });
+    fireEvent.change(within(vida).getByLabelText('Extra de Vida'), { target: { value: '10' } });
+    expect(screen.getByTestId('extra-VIDA').textContent).toBe('+10 extra');
+
+    aplicarNa('Vida', 'Quantidade de Vida', '15', 'Dano');
+    expect(screen.getByTestId('valor-VIDA').textContent).toBe('40 / 45');
+    expect(screen.queryByTestId('extra-VIDA')).toBeNull();
+
+    const hist = within(screen.getByRole('region', { name: 'Histórico' }));
+    expect(hist.getByText('−15 dano (10 do extra)')).toBeTruthy();
+    expect(hist.getByText('extra 0 → 10')).toBeTruthy();
+    await waitFor(async () => expect((await repo.obter(ficha.id))!.extras?.VIDA).toBe(0));
+  });
+
+  it('descanso longo aparece no histórico', async () => {
+    await montar();
+    aplicarNa('Vida', 'Quantidade de Vida', '40', 'Dano');
+    fireEvent.click(screen.getByRole('button', { name: 'Descanso longo' }));
+    expect(within(screen.getByRole('region', { name: 'Histórico' })).getByText('+23 descanso longo')).toBeTruthy();
+  });
+
+  it('ficha salva com máximo quebrado (regra antiga) abre arredondada e é salva assim', async () => {
+    const repo = new RepositorioMemoria();
+    const f = criarFicha({ nome: 'Rogerin', ...SKAR });
+    const antiga = { ...f, maximos: { ...f.maximos, VIDA: 38.7, STA: 16.7 }, atuais: { ...f.atuais, VIDA: 12, STA: 16.7 } };
+    await repo.salvar(antiga);
+    render(<FichaTela repo={repo} id={f.id} />);
+    await screen.findByRole('heading', { name: 'Rogerin' });
+    expect(screen.getByTestId('valor-VIDA').textContent).toBe('12 / 45');
+    expect(screen.getByTestId('valor-STA').textContent).toBe('20 / 20');
+    await waitFor(async () => expect((await repo.obter(f.id))!.maximos.STA).toBe(20));
   });
 
   it('erro ao salvar aparece na tela', async () => {

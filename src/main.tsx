@@ -1,9 +1,14 @@
 import { render } from 'preact';
 import { registerSW } from 'virtual:pwa-register';
-import { App } from './app';
 import { RepositorioDexie } from './dados/dexie';
+import { USAR_EMULADOR } from './nuvem/config';
+import { iniciarNuvem } from './nuvem/firebase';
+import { Sessao } from './ui/Sessao';
 import './styles.css';
 
 registerSW({ immediate: true });
 
-render(<App repo={new RepositorioDexie()} />, document.getElementById('app')!);
+const nuvem = iniciarNuvem({ emulador: USAR_EMULADOR, persistente: true });
+
+// O banco local das etapas 2–3 continua existindo só para migrar as fichas antigas para a nuvem.
+render(<Sessao nuvem={nuvem} repoLocal={new RepositorioDexie()} />, document.getElementById('app')!);

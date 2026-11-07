@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { criarFicha } from '../dominio/ficha';
 import { importarFicha, lerArquivo } from '../dados/exportacao';
@@ -7,9 +8,10 @@ import { SKAR } from '../rules/fixtures/skar';
 interface Props {
   repo: RepositorioFichas;
   navegar: (rota: string) => void;
+  aviso?: ComponentChildren;
 }
 
-export function ListaFichas({ repo, navegar }: Props) {
+export function ListaFichas({ repo, navegar, aviso }: Props) {
   const [fichas, setFichas] = useState<ResumoFicha[] | null>(null);
   const [erro, setErro] = useState('');
 
@@ -64,6 +66,8 @@ export function ListaFichas({ repo, navegar }: Props) {
     <main class="pagina home">
       <h1>Caldron Sheets</h1>
       <p class="subtitle">Ficha · Inventário · Journal</p>
+
+      {aviso}
 
       {erro && (
         <p class="erro" role="alert">

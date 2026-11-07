@@ -2,12 +2,14 @@ import { useState } from 'preact/hooks';
 import {
   alterar,
   aplicar,
+  definirExtra,
+  extraDe,
   descreverEfeitos,
   descreverEntrada,
   nomeAlvo,
   NOMES_RECURSOS,
   RECURSOS,
-  restaurarTudo,
+  descansoLongo,
   type AlvoAlteracao,
   type Ficha,
   type Recurso,
@@ -25,7 +27,7 @@ import {
 import { formatar, type ErroCampo } from '../rules/motor';
 import { exportarFicha, nomeArquivo } from '../dados/exportacao';
 import { BarraRecurso } from './BarraRecurso';
-import { AbasFicha, Cabecalho, Hora, NaoEncontrada, useFicha } from './comum';
+import { AbasFicha, Cabecalho, Entrada, Hora, NaoEncontrada, useFicha } from './comum';
 
 const HISTORICO_VISIVEL = 6;
 const DERIVADOS_EXIBIDOS = (Object.keys(FORMULAS_CALDRONIS) as Derivado[]).filter(
@@ -111,11 +113,13 @@ export function FichaTela({ repo, id }: Props) {
             recurso={r}
             atual={ficha.atuais[r]}
             max={ficha.maximos[r]}
+            extra={extraDe(ficha, r)}
             onAplicar={(tipo, valor) => aplicarRecurso(r, tipo, valor)}
+            onExtra={(valor) => void salvar(definirExtra(ficha, r, valor))}
           />
         ))}
-        <button type="button" class="btn btn-secundario" onClick={() => void salvar(restaurarTudo(ficha))}>
-          Descanso: restaurar tudo
+        <button type="button" class="btn btn-secundario" onClick={() => void salvar(descansoLongo(ficha))}>
+          Descanso longo
         </button>
       </div>
 
@@ -247,7 +251,7 @@ function CampoTexto({ rotulo, valor, onMudar }: { rotulo: string; valor: string;
   return (
     <label class="campo">
       <span>{rotulo}</span>
-      <input type="text" value={valor} onChange={(e) => onMudar(e.currentTarget.value)} />
+      <Entrada type="text" valor={valor} onConfirmar={onMudar} />
     </label>
   );
 }
@@ -262,16 +266,16 @@ function CampoNumero(props: {
   return (
     <label class="campo campo-numero">
       <span class={props.oculto ? 'sr-only' : undefined}>{props.rotulo}</span>
-      <input
+      <Entrada
         type="number"
         inputMode="decimal"
         step="any"
         min={props.min}
-        value={props.valor}
-        onChange={(e) => {
-          const n = e.currentTarget.valueAsNumber;
-          if (Number.isFinite(n) && (props.min === undefined || n >= props.min)) props.onMudar(n);
-          else e.currentTarget.value = String(props.valor);
+        valor={String(props.valor)}
+        onConfirmar={(texto) => {
+          const n = texto.trim() === '' ? Number.NaN : Number(texto);
+          if (!Number.isFinite(n) || (props.min !== undefined && n < props.min)) return false;
+          props.onMudar(n);
         }}
       />
     </label>

@@ -20,11 +20,14 @@ npm run build && npm run preview  # build de produção com service worker
 | `npm run typecheck` | `tsc` em modo estrito |
 | `npm test` | Vitest unitário + componente (jsdom) — `src/**/*.test.ts(x)` |
 | `npm run coverage` | Vitest com cobertura v8 |
-| `npm run e2e` | Playwright (Chromium desktop + Pixel 7) contra o build de produção em `:4173` |
+| `npm run test:nuvem` | Vitest contra o Firebase Emulator: mesma suíte do repositório no Firestore, login e `firestore.rules` |
+| `npm run e2e` | Playwright (Chromium desktop + Pixel 7) contra o build `--mode emulador` em `:4173`, com o emulador junto |
+| `npm run emulators` | Sobe Auth (9099) + Firestore (8080) do emulador, projeto `demo-caldron` |
 | `npm run check` | Tudo acima em sequência — rode antes de abrir PR |
 
 O E2E faz o build sozinho (`webServer` em `playwright.config.ts`) porque o service
-worker só existe no build de produção.
+worker só existe no build de produção. O emulador e o E2E precisam de **Java 21+** no PATH.
+Os testes E2E rodam um por vez (todos limpam e usam o mesmo emulador).
 
 ## Regras do projeto
 
@@ -43,13 +46,15 @@ worker só existe no build de produção.
 
 - `parser.ts` — tokeniza e interpreta fórmulas: números, símbolos (sem diferenciar maiúsculas),
   `+ - * /` (também `× ÷ −`), parênteses e as funções `media`, `soma`, `min`, `max`, `int`
-  (`int` = INT do Excel, arredonda para baixo). Qualquer outra coisa vira `ErroFormula` com mensagem
+  (`int` = INT do Excel, arredonda para baixo) e `arred` (inteiro mais próximo). Qualquer outra coisa vira `ErroFormula` com mensagem
   em português.
 - `motor.ts` — `calcular(formulas, entradas, ajustes)` ordena por dependência, detecta ciclo e
   símbolo desconhecido e devolve `{ ok, valores }` ou `{ ok: false, erros }`. Nunca lança por
   erro do Mestre. `formatar()` arredonda só para exibir (1 casa, pt-BR).
 - `caldronis.ts` — preset do sistema. Atributo atual = base + extra − perda, e **todas** as
-  fórmulas usam o atual (inclusive CON em Vida/STA/Def). Decimais são mantidos até a tela.
+  fórmulas usam o atual (inclusive CON em Vida/STA/Def). **Vida, STA e Mana máximas são inteiras**
+  (`arred()`, mais próximo, ,5 sobe). Corpo, Mente, defesas e deslocamento guardam decimais até a tela.
+  Ficha salva com regra antiga é recalculada ao abrir (`atualizarParaRegrasAtuais`).
 - `fixtures/skar.ts` — **Skar Lionet** é o personagem de referência (planilha
   `C:\RPG KRAIO\Players\Thainan\Skar.xlsx`). Não use o Ez'kher: foi aposentado.
 
@@ -58,7 +63,12 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
 ## Ficha e dados (etapa 2)
 
 - `src/dominio/ficha.ts` — modelo `Ficha` e funções puras: `criarFicha`, `aplicar` (dano/cura/gasto),
-  `recalcular` (máximos novos; se o máximo cai, o atual é cortado), `restaurarTudo`. Piso por recurso
+  `recalcular` (máximos novos; se o máximo cai, o atual é cortado), `descansoLongo` (recupera 50% da
+  Vida máxima, arredondado, sem passar do máximo; enche STA e Mana).
+- **Extra (temporário)** por recurso em `ficha.extras` (campo manual no cartão do recurso): dano/gasto tira
+  primeiro do extra, cura não recupera, descanso não mexe. `definirExtra`, `extraDe`.
+- Histórico de recursos (`TipoEntrada`): dano, cura, `descanso` (uma linha por recurso que subiu) e
+  `extra` (de → para). Piso por recurso
   em `PISO`: Vida sem piso (pode ficar negativa), STA e Mana em 0. Histórico guarda as últimas 20.
 - `alterar(ficha, alvo, valor)` muda nível ou atributo (base/extra/perda), recalcula e registra em
   `ficha.alteracoes` (de → para, efeito nos máximos de Vida/STA/Mana, hora; últimas 30). Toda
@@ -74,7 +84,7 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
 ## Inventário, fotos, journal e backup (etapa 3)
 
 - `src/dominio/inventario.ts` — itens (qtd, peso por unidade, Def.F/Def.M, `equipado`), peso total,
-  defesa dos itens (**só equipados**, qtd × defesa) e carteira (valores em cobre: ferro 0,1 … oricalco
+  defesa dos itens (**só equipados**, qtd × defesa) e carteira (valores em **Caldris**, a unidade do total — 1 cobre = 1 Caldris: ferro 0,1 … oricalco
   1.000.000; **Moeda d'Alma** é contador à parte, fora do total). Sem limite de carga (decisão do Mestre).
   Toda mudança de moeda passa por `movimentarMoeda`, que registra de → para em `carteira.historico`
   (últimas 30).
@@ -90,13 +100,33 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
 - Rotas: `#/ficha/<id>`, `#/ficha/<id>/inventario`, `#/ficha/<id>/journal`.
 - Banco Dexie na versão 3 (tabelas `itens`, `imagens`, `journal`; carteira na ficha).
 
+## Nuvem e sincronização (etapa 4)
+
+- Firebase Auth (usuário e senha) + Firestore com cache persistente (IndexedDB). Config pública em
+  `src/nuvem/config.ts`; `.env.emulador` (`VITE_EMULADOR=1`) aponta o build para o emulador.
+- Login: "thainan" vira `thainan@caldron-sheets.invalid`. O **primeiro acesso** cria a conta do Mestre e
+  grava `campanha/config { mestreUid }` — as regras só deixam criar esse documento uma vez.
+- `src/dados/firestore.ts` — `RepositorioFirestore`. **Escrita nunca espera o servidor**: grava no cache,
+  espera só a gravação local (leitura do cache enfileirada depois) e acompanha a confirmação à parte
+  (`observar()` → `EstadoSync { pendentes, gravando, erro }`). Sem rede, lê direto do cache.
+- Coleções no topo: `personagens`, `itens`, `imagens`, `journal` (cada doc com `fichaId`).
+- `firestore.rules` — só o Mestre lê/escreve; **última edição ganha**: atualização com `atualizadoEm`
+  menor que o do servidor é recusada (o aparelho atrasado recebe aviso). Imagens: só data URL
+  webp/jpeg/png < 700KB. Testes em `src/nuvem/regras.nuvem.test.ts`.
+- Campos editáveis que salvam ao sair do campo usam `<Entrada>` (`src/ui/comum.tsx`), que guarda o
+  rascunho: um `<input value>` comum é resetado pelos redesenhos do indicador de sync.
+- Fichas antigas do Dexie: aviso "Enviar para a nuvem" na lista (`src/nuvem/migracao.ts`); o Dexie
+  não é apagado.
+- Publicar regras: `npx firebase deploy --only firestore:rules --project caldron-sheets`.
+
 ## Estrutura
 
 ```
 src/          código do app (Preact)
 src/rules/    motor de fórmulas e preset Caldronis (cobertura mínima 90%)
 src/dominio/  regras da ficha sem tela e sem banco
-src/dados/    repositórios (Dexie hoje, Firestore na etapa 4)
+src/dados/    repositórios (Firestore no app; Dexie para migrar; memória nos testes)
+src/nuvem/    Firebase: config, login, migração, ajudantes de teste do emulador
 src/ui/       componentes de tela
 e2e/          testes Playwright
 scripts/      utilitários (ex.: gen-icons.mjs gera os PNGs a partir de public/icon.svg)

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'preact/hooks';
-import type { Ficha } from '../dominio/ficha';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { atualizarParaRegrasAtuais, type Ficha } from '../dominio/ficha';
 import type { RepositorioFichas } from '../dados/repositorio';
 
 export type Aba = 'ficha' | 'inventario' | 'journal';
@@ -46,12 +46,20 @@ export function Cabecalho({ ficha }: { ficha: Ficha }) {
   );
 }
 
-/** Carrega a ficha; `null` = não existe, `undefined` = carregando. */
+/**
+ * Carrega a ficha; `null` = não existe, `undefined` = carregando. Ficha salva com regras antigas é
+ * recalculada e salva de novo (ex.: Vida máx. 38,7 → 39).
+ */
 export function useFicha(repo: RepositorioFichas, id: string) {
   const [ficha, setFicha] = useState<Ficha | null | undefined>(undefined);
   useEffect(() => {
     let vivo = true;
-    repo.obter(id).then((f) => vivo && setFicha(f ?? null));
+    repo.obter(id).then((f) => {
+      if (!vivo) return;
+      const atualizada = f && atualizarParaRegrasAtuais(f);
+      if (atualizada) void repo.salvar(atualizada).catch(() => {});
+      setFicha(atualizada ?? f ?? null);
+    });
     return () => {
       vivo = false;
     };
@@ -82,4 +90,47 @@ export function Hora({ em }: { em: number }) {
     ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   return <time dateTime={d.toISOString()}>{texto}</time>;
+}
+
+interface PropsEntrada {
+  /** Valor salvo. Só substitui o que está digitado quando ele muda de verdade. */
+  valor: string;
+  /** Chamado ao confirmar (sair do campo / Enter). Devolva `false` para desfazer o que foi digitado. */
+  onConfirmar: (texto: string) => boolean | void;
+  type?: 'text' | 'number';
+  inputMode?: 'text' | 'numeric' | 'decimal';
+  min?: number;
+  step?: number | 'any';
+}
+
+/**
+ * Campo com rascunho próprio. Um `<input value={...}>` comum volta ao valor salvo a cada redesenho
+ * da tela — e com a sincronização mudando o indicador o tempo todo, isso apagava o que a pessoa
+ * estava digitando antes de ela sair do campo.
+ */
+export function Entrada({ valor, onConfirmar, type = 'text', inputMode, min, step }: PropsEntrada) {
+  const [texto, setTexto] = useState(valor);
+  const ultimoValor = useRef(valor);
+  useEffect(() => {
+    if (valor !== ultimoValor.current) {
+      ultimoValor.current = valor;
+      setTexto(valor);
+    }
+  }, [valor]);
+
+  const comum = {
+    inputMode,
+    value: texto,
+    onInput: (e: Event) => setTexto((e.currentTarget as HTMLInputElement).value),
+    onChange: (e: Event) => {
+      const input = e.currentTarget as HTMLInputElement;
+      if (onConfirmar(input.value) === false) {
+        // Desfaz também na tela: se o rascunho já era o valor salvo, o redesenho não acontece.
+        input.value = valor;
+        setTexto(valor);
+      }
+    },
+  };
+  // O tipo do <input> no Preact 11 depende do `type` literal, por isso os dois ramos.
+  return type === 'number' ? <input type="number" min={min} step={step} {...comum} /> : <input type="text" {...comum} />;
 }
