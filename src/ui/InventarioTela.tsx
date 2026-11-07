@@ -191,9 +191,20 @@ export function InventarioTela({ repo, id, prepararImagem }: Props) {
       </section>
 
       <section class="carteira" aria-label="Carteira">
-        <div class="titulo-secao">
-          <h2>Carteira</h2>
-          <span data-testid="total-carteira">Total: {formatar(totalCarteira(ficha.carteira))} cobre</span>
+        <h2>Carteira</h2>
+        <div class="total-carteira" role="group" aria-label="Total da carteira">
+          <span class="total-rotulo">Total</span>
+          <span class="total-linha">
+            <strong class="total-valor" data-testid="total-carteira">
+              {formatar(totalCarteira(ficha.carteira))}
+            </strong>
+            <span class="total-unidade">Caldris</span>
+          </span>
+          {ficha.carteira.alma > 0 && (
+            <span class="total-alma" data-testid="total-alma">
+              + {formatar(ficha.carteira.alma)} Moeda{ficha.carteira.alma > 1 ? 's' : ''} d'Alma
+            </span>
+          )}
         </div>
         <div class="moedas">
           {MOEDAS.map((m) => (

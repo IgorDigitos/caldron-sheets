@@ -46,7 +46,8 @@ describe('InventarioTela', () => {
     expect(screen.getByTestId('def-fisica').textContent).toBe('7,5');
     expect(screen.getByTestId('def-magica').textContent).toBe('3,8');
     expect(screen.getByTestId('peso-total').textContent).toBe('Peso total: 0');
-    expect(screen.getByTestId('total-carteira').textContent).toBe('Total: 0 cobre');
+    expect(screen.getByTestId('total-carteira').textContent).toBe('0');
+    expect(screen.queryByTestId('total-alma')).toBeNull();
     expect(screen.getByRole('tab', { name: 'Inventário' }).getAttribute('aria-selected')).toBe('true');
   });
 
@@ -154,7 +155,8 @@ describe('InventarioTela', () => {
     fireEvent.change(within(carteira).getByLabelText('Ouro'), { target: { value: '2' } });
     fireEvent.change(within(carteira).getByLabelText('Bronze'), { target: { value: '9' } });
     fireEvent.change(within(carteira).getByLabelText("Moeda d'Alma"), { target: { value: '3' } });
-    expect(screen.getByTestId('total-carteira').textContent).toBe('Total: 2.090 cobre');
+    expect(screen.getByTestId('total-carteira').textContent).toBe('2.090');
+    expect(screen.getByTestId('total-alma').textContent).toBe("+ 3 Moedas d'Alma");
     await waitFor(async () => expect((await repo.obter(ficha.id))!.carteira).toMatchObject({ alma: 3, moedas: { ouro: 2, bronze: 9 } }));
   });
 

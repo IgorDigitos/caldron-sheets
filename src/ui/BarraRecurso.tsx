@@ -109,7 +109,6 @@ export function BarraRecurso({ recurso, atual, max, extra = 0, onAplicar, onExtr
               }}
             />
           </label>
-          <small>sai primeiro daqui no dano</small>
         </div>
       )}
       {erro && (

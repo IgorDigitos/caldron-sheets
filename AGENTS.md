@@ -84,7 +84,7 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
 ## Inventário, fotos, journal e backup (etapa 3)
 
 - `src/dominio/inventario.ts` — itens (qtd, peso por unidade, Def.F/Def.M, `equipado`), peso total,
-  defesa dos itens (**só equipados**, qtd × defesa) e carteira (valores em cobre: ferro 0,1 … oricalco
+  defesa dos itens (**só equipados**, qtd × defesa) e carteira (valores em **Caldris**, a unidade do total — 1 cobre = 1 Caldris: ferro 0,1 … oricalco
   1.000.000; **Moeda d'Alma** é contador à parte, fora do total). Sem limite de carga (decisão do Mestre).
   Toda mudança de moeda passa por `movimentarMoeda`, que registra de → para em `carteira.historico`
   (últimas 30).

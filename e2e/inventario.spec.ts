@@ -77,7 +77,7 @@ test('exportar, apagar e importar devolve a mesma ficha', async ({ page }) => {
   await page.getByRole('button', { name: 'Salvar item' }).click();
   await page.getByRole('region', { name: 'Carteira' }).getByLabel('Ouro').fill('2');
   await page.getByRole('region', { name: 'Carteira' }).getByLabel('Ouro').press('Tab');
-  await expect(page.getByTestId('total-carteira')).toHaveText('Total: 2.000 cobre');
+  await expect(page.getByTestId('total-carteira')).toHaveText('2.000');
 
   await page.getByRole('tab', { name: 'Journal' }).click();
   await page.getByRole('button', { name: 'Nova entrada' }).click();
@@ -112,7 +112,7 @@ test('exportar, apagar e importar devolve a mesma ficha', async ({ page }) => {
   await page.getByRole('tab', { name: 'Inventário' }).click();
   await expect(page.getByText('Lamparina mágica')).toBeVisible();
   await expect(page.locator('img.miniatura')).toHaveAttribute('src', /^data:image\//);
-  await expect(page.getByTestId('total-carteira')).toHaveText('Total: 2.000 cobre');
+  await expect(page.getByTestId('total-carteira')).toHaveText('2.000');
   await expect(page.getByRole('region', { name: 'Histórico da carteira' })).toContainText('+2 Ouro');
   await page.getByRole('tab', { name: 'Journal' }).click();
   await expect(page.getByRole('heading', { name: 'Chegada a Vel' })).toBeVisible();

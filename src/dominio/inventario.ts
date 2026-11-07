@@ -97,7 +97,7 @@ export function ordenarItens(itens: readonly Item[]): Item[] {
 
 // ---------- Carteira ----------
 
-/** Valor de cada moeda em cobre (aba INFO+ da planilha). */
+/** Valor de cada moeda em Caldris, a unidade da carteira (1 cobre = 1 Caldris; aba INFO+ da planilha). */
 export const MOEDAS = [
   { id: 'ferro', nome: 'Ferro', valor: 0.1 },
   { id: 'cobre', nome: 'Cobre', valor: 1 },
@@ -138,7 +138,7 @@ export function carteiraVazia(): Carteira {
   };
 }
 
-/** Total em cobre. Arredonda para 1 casa para o ferro (0,1) não gerar 2089,9999. */
+/** Total em Caldris. Arredonda para 1 casa para o ferro (0,1) não gerar 2089,9999. */
 export function totalCarteira(c: Carteira): number {
   const total = MOEDAS.reduce((s, m) => s + (c.moedas[m.id] ?? 0) * m.valor, 0);
   return Math.round(total * 10) / 10;

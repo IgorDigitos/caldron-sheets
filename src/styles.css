@@ -911,3 +911,47 @@ h2 {
   align-items: center;
   gap: 8px;
 }
+
+/* Total da carteira em destaque */
+.total-carteira {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(217, 164, 65, 0.16), rgba(217, 164, 65, 0.04));
+}
+
+.total-rotulo {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.total-linha {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.total-valor {
+  color: var(--accent);
+  font-size: 1.75rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.total-unidade {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.total-alma {
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
