@@ -148,6 +148,17 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
 - Publicar à mão: `npm run deploy`.
 - O app pede armazenamento persistente ao abrir (`src/plataforma/armazenamento.ts`).
 
+## Skills (Magias, Técnicas, Habilidades)
+
+- `src/dominio/skills.ts` — colunas da planilha (nome, ATK/MOD, PAs, gastos em texto, descrição) mais
+  `custos` estruturados (`{ recurso, valor }[]`, até 3), que o botão **Usar** desconta da ficha via
+  `usarSkill` (extra primeiro; sem recurso suficiente, não gasta nada). O histórico guarda `origem`
+  (nome da skill).
+- Coleção `skills` (com `fichaId`). Só o Mestre cria/edita/apaga; o dono da ficha só lê. Usar a skill
+  grava a FICHA (regras de jogador já cobrem gastar STA/Mana).
+- Aba `#/ficha/<id>/skills`. "Criar Skar de exemplo" já vem com as skills da planilha.
+- Backup inclui `skills` (opcional no arquivo, para backups antigos).
+
 ## Estrutura
 
 ```

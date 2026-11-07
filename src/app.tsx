@@ -9,6 +9,7 @@ import { JogadoresTela } from './ui/JogadoresTela';
 import { JournalTela } from './ui/JournalTela';
 import { ContextoSessao, SESSAO_PADRAO, type InfoSessao } from './ui/papel';
 import { ListaFichas } from './ui/ListaFichas';
+import { SkillsTela } from './ui/SkillsTela';
 
 function useOnline(): boolean {
   const [online, setOnline] = useState(() => navigator.onLine);
@@ -44,7 +45,7 @@ function useRota(): [string, (r: string) => void] {
 
 export function rotaParaTela(rota: string): { tela: 'lista' | 'jogadores' } | { tela: Aba; id: string } {
   if (rota === '/jogadores') return { tela: 'jogadores' };
-  const m = /^\/ficha\/([\w-]+)(?:\/(inventario|journal))?$/.exec(rota);
+  const m = /^\/ficha\/([\w-]+)(?:\/(inventario|skills|journal))?$/.exec(rota);
   if (!m) return { tela: 'lista' };
   return { tela: (m[2] as Aba | undefined) ?? 'ficha', id: m[1]! };
 }
@@ -108,6 +109,7 @@ export function App({ repo, sync, onLimparErroSync, usuario, onSair, avisoLista,
       {r.tela === 'lista' && <ListaFichas repo={repo} navegar={navegar} aviso={avisoLista} />}
       {r.tela === 'ficha' && <FichaTela key={r.id} repo={repo} id={r.id} />}
       {r.tela === 'inventario' && <InventarioTela key={r.id} repo={repo} id={r.id} />}
+      {r.tela === 'skills' && <SkillsTela key={r.id} repo={repo} id={r.id} />}
       {r.tela === 'journal' && <JournalTela key={r.id} repo={repo} id={r.id} />}
       {r.tela === 'jogadores' &&
         (sessao.papel === 'mestre' ? <JogadoresTela /> : <ListaFichas repo={repo} navegar={navegar} />)}

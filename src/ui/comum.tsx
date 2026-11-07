@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { atualizarParaRegrasAtuais, type Ficha } from '../dominio/ficha';
 import type { RepositorioFichas } from '../dados/repositorio';
 
-export type Aba = 'ficha' | 'inventario' | 'journal';
+export type Aba = 'ficha' | 'inventario' | 'skills' | 'journal';
 
 const ABAS: { id: Aba; nome: string; sufixo: string }[] = [
   { id: 'ficha', nome: 'Ficha', sufixo: '' },
   { id: 'inventario', nome: 'Inventário', sufixo: '/inventario' },
+  { id: 'skills', nome: 'Skills', sufixo: '/skills' },
   { id: 'journal', nome: 'Journal', sufixo: '/journal' },
 ];
 

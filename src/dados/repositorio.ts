@@ -3,6 +3,7 @@
 import type { Ficha } from '../dominio/ficha';
 import type { Item } from '../dominio/inventario';
 import type { EntradaJournal } from '../dominio/journal';
+import type { Skill } from '../dominio/skills';
 import type { Imagem } from '../midia/imagem';
 
 export interface ResumoFicha {
@@ -21,13 +22,14 @@ export interface PacoteFicha {
   itens: Item[];
   imagens: Imagem[];
   journal: EntradaJournal[];
+  skills: Skill[];
 }
 
 export interface RepositorioFichas {
   listar(): Promise<ResumoFicha[]>;
   obter(id: string): Promise<Ficha | undefined>;
   salvar(ficha: Ficha): Promise<void>;
-  /** Exclui a ficha e tudo dela (itens, imagens, journal). */
+  /** Exclui a ficha e tudo dela (itens, imagens, journal, skills). */
   excluir(id: string): Promise<void>;
 
   listarItens(fichaId: string): Promise<Item[]>;
@@ -41,6 +43,10 @@ export interface RepositorioFichas {
   listarJournal(fichaId: string): Promise<EntradaJournal[]>;
   salvarEntrada(entrada: EntradaJournal): Promise<void>;
   excluirEntrada(id: string): Promise<void>;
+
+  listarSkills(fichaId: string): Promise<Skill[]>;
+  salvarSkill(skill: Skill): Promise<void>;
+  excluirSkill(id: string): Promise<void>;
 
   /** Lê tudo de uma ficha de uma vez (para exportar). */
   obterPacote(fichaId: string): Promise<PacoteFicha | undefined>;

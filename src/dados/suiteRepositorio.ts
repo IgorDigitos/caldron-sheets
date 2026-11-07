@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { aplicar, criarFicha } from '../dominio/ficha';
 import { criarItem } from '../dominio/inventario';
 import { criarEntrada } from '../dominio/journal';
+import { criarSkill } from '../dominio/skills';
 import type { Imagem } from '../midia/imagem';
 import { SKAR } from '../rules/fixtures/skar';
 import type { RepositorioFichas } from './repositorio';
@@ -92,6 +93,18 @@ export function testarRepositorio(nome: string, criar: () => RepositorioFichas |
       expect(await repo.listarJournal('f1')).toEqual([]);
     });
 
+    it('skills: salvar, listar por ficha, editar, excluir', async () => {
+      const repo = await criar();
+      const a = criarSkill('f1', { nome: 'Guarda de Impacto', categoria: 'tecnica' });
+      await repo.salvarSkill(a);
+      await repo.salvarSkill(criarSkill('f2', { nome: 'De outro' }));
+      expect(await repo.listarSkills('f1')).toEqual([a]);
+      await repo.salvarSkill({ ...a, gastos: '2 STA', atualizadoEm: a.atualizadoEm + 1 });
+      expect((await repo.listarSkills('f1'))[0]!.gastos).toBe('2 STA');
+      await repo.excluirSkill(a.id);
+      expect(await repo.listarSkills('f1')).toEqual([]);
+    });
+
     it('excluir a ficha leva junto itens, imagens e journal (e só dela)', async () => {
       const repo = await criar();
       const f = criarFicha({ nome: 'Skar' });
@@ -102,7 +115,9 @@ export function testarRepositorio(nome: string, criar: () => RepositorioFichas |
       await repo.salvarItem(criarItem(outra.id, { nome: 'Fica' }));
       await repo.salvarImagem({ id: 'i1', fichaId: f.id, dataUrl: 'data:image/webp;base64,AA==', tipo: 'image/webp', largura: 1, altura: 1, bytes: 1, criadoEm: 1 });
       await repo.salvarEntrada(criarEntrada(f.id, { titulo: 'x' }));
+      await repo.salvarSkill(criarSkill(f.id, { nome: 'Some junto' }));
       await repo.excluir(f.id);
+      expect(await repo.listarSkills(f.id)).toEqual([]);
       expect(await repo.listarItens(f.id)).toEqual([]);
       expect(await repo.obterImagem('i1')).toBeUndefined();
       expect(await repo.listarJournal(f.id)).toEqual([]);
@@ -118,12 +133,14 @@ export function testarRepositorio(nome: string, criar: () => RepositorioFichas |
       await repo.salvarItem(velho);
       const novo = criarItem(f.id, { nome: 'Novo' });
       const entrada = criarEntrada(f.id, { titulo: 'x' });
-      await repo.gravarPacote({ ficha: { ...f, nome: 'Skar 2' }, itens: [novo], imagens: [], journal: [entrada] });
+      const skill = criarSkill(f.id, { nome: 'Punhos de Pedra', atkMod: '2d4+FOR' });
+      await repo.gravarPacote({ ficha: { ...f, nome: 'Skar 2' }, itens: [novo], imagens: [], journal: [entrada], skills: [skill] });
       const p = (await repo.obterPacote(f.id))!;
       expect(p.ficha.nome).toBe('Skar 2');
       expect(p.itens).toEqual([novo]);
       expect(p.journal).toEqual([entrada]);
       expect(p.imagens).toEqual([]);
+      expect(p.skills).toEqual([skill]);
     });
 
     it('o objeto salvo não muda se a ficha em memória mudar depois', async () => {

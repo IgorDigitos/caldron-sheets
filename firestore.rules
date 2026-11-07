@@ -155,6 +155,15 @@ service cloud.firestore {
         && (ehMestre() || (donoDaFicha(resource.data.fichaId) && request.resource.data.fichaId == resource.data.fichaId));
     }
 
+    // Skills (Magias, Técnicas, Habilidades): só o Mestre cria e edita; o dono da ficha só lê.
+    // Usar uma skill gasta recurso na FICHA (regra de personagens), não muda o documento da skill.
+    match /skills/{id} {
+      allow read: if ehMestre() || donoDaFicha(resource.data.fichaId);
+      allow create: if ehMestre() && idConfere(id) && temFicha() && request.resource.data.atualizadoEm is number;
+      allow update: if ehMestre() && idConfere(id) && temFicha() && naoMaisVelha();
+      allow delete: if ehMestre();
+    }
+
     // Imagens não são editadas: só criadas e apagadas. Limite de tamanho abaixo do 1MB do Firestore.
     match /imagens/{id} {
       allow read, delete: if ehMestre() || donoDaFicha(resource.data.fichaId);

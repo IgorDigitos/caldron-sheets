@@ -13,6 +13,7 @@ import {
 import { PORTAS_EMULADOR, PROJETO_EMULADOR } from './config';
 import { alterar, aplicar, criarFicha, definirExtra, descansoLongo, type Ficha } from '../dominio/ficha';
 import { movimentarMoeda } from '../dominio/inventario';
+import { criarSkill, usarSkill } from '../dominio/skills';
 import { SKAR } from '../rules/fixtures/skar';
 
 let env: RulesTestEnvironment;
@@ -188,6 +189,42 @@ describe('jogador — itens, journal e imagens', () => {
     await assertSucceeds(jogador().doc('imagens/i1').set({ id: 'i1', fichaId: 'skar', dataUrl: DATA_URL, criadoEm: 1 }));
     await assertSucceeds(jogador().doc('imagens/i1').get());
     await assertFails(jogador().doc('imagens/i2').set({ id: 'i2', fichaId: 'ogro', dataUrl: DATA_URL, criadoEm: 1 }));
+  });
+});
+
+describe('skills', () => {
+  const skill = (fichaId: string, id = 's1', atualizadoEm = 1) => ({
+    id,
+    fichaId,
+    categoria: 'tecnica',
+    nome: 'Guarda de Impacto',
+    atualizadoEm,
+  });
+
+  it('Mestre cria, edita e apaga', async () => {
+    await assertSucceeds(mestre().doc('skills/s1').set(skill('skar')));
+    await assertSucceeds(mestre().doc('skills/s1').set(skill('skar', 's1', 2)));
+    await assertSucceeds(mestre().doc('skills/s1').delete());
+  });
+
+  it('jogador lê as skills da própria ficha, mas não cria, edita nem apaga', async () => {
+    await env.withSecurityRulesDisabled((ctx) => ctx.firestore().doc('skills/s1').set(skill('skar')));
+    await assertSucceeds(jogador().doc('skills/s1').get());
+    await assertSucceeds(jogador().collection('skills').where('fichaId', '==', 'skar').get());
+    await assertFails(jogador().doc('skills/s1').set(skill('skar', 's1', 2)));
+    await assertFails(jogador().doc('skills/nova').set(skill('skar', 'nova')));
+    await assertFails(jogador().doc('skills/s1').delete());
+  });
+
+  it('jogador não lê skills de outra ficha', async () => {
+    await env.withSecurityRulesDisabled((ctx) => ctx.firestore().doc('skills/do-ogro').set(skill('ogro', 'do-ogro')));
+    await assertFails(jogador().doc('skills/do-ogro').get());
+    await assertFails(jogador().collection('skills').where('fichaId', '==', 'ogro').get());
+  });
+
+  it('usar a skill (gastar STA na ficha, com origem no histórico) é aceito', async () => {
+    const s = criarSkill('skar', { nome: 'Guarda de Impacto', custos: [{ recurso: 'STA', valor: 2 }] });
+    await assertSucceeds(gravar(usarSkill(skarDoJogador(), s, 2000)));
   });
 });
 

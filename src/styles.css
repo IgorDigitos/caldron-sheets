@@ -450,7 +450,7 @@ h2 {
 
 .abas {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 4px;
   padding: 4px;
   background: var(--surface);
@@ -994,4 +994,134 @@ h2 {
   border: 1px solid var(--border);
   border-radius: 10px;
   font-weight: 600;
+}
+
+/* Skills */
+.resumo-recursos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.resumo-recursos small {
+  color: var(--accent);
+}
+
+.categoria-skill {
+  margin-top: 20px;
+}
+
+.lista-skills {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.skill {
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.skill header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.skill h3 {
+  margin: 0;
+  font-size: 1.0625rem;
+}
+
+.selo-atk {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.skill-meta {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.skill-meta:empty {
+  display: none;
+}
+
+.skill-descricao summary {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  color: var(--accent);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.skill-descricao p {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  font-size: 0.9375rem;
+}
+
+.skill-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.skill-acoes:empty {
+  display: none;
+}
+
+.skill-acoes small {
+  font-weight: 500;
+}
+
+.custos {
+  margin: 4px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.custos legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.linha-custo {
+  display: grid;
+  grid-template-columns: 1fr 90px auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.campo select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #120d16;
+  color: var(--fg);
+  font: inherit;
+  font-size: 1rem;
 }
