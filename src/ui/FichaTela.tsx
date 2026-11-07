@@ -1,7 +1,10 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import {
   alterar,
   aplicar,
+  atualDe,
+  maxDe,
+  type IdRecurso,
   definirExtra,
   extraDe,
   descreverEfeitos,
@@ -12,7 +15,6 @@ import {
   descansoLongo,
   type AlvoAlteracao,
   type Ficha,
-  type Recurso,
   type TipoMudanca,
 } from '../dominio/ficha';
 import type { RepositorioFichas } from '../dados/repositorio';
@@ -28,7 +30,15 @@ import { formatar, type ErroCampo } from '../rules/motor';
 import { exportarFicha, nomeArquivo } from '../dados/exportacao';
 import { BarraRecurso } from './BarraRecurso';
 import { useSessao } from './papel';
-import { AbasFicha, Cabecalho, Entrada, Hora, NaoEncontrada, useFicha } from './comum';
+import { AbasFicha, Cabecalho, Entrada, Hora, NaoEncontrada, useCatalogo, useFicha } from './comum';
+import {
+  desabilitarRecurso,
+  habilitarRecurso,
+  idsPersonalizados,
+  nomeRecurso,
+  recalcularPersonalizados,
+  type DefRecurso,
+} from '../dominio/recursos';
 
 const HISTORICO_VISIVEL = 6;
 const DERIVADOS_EXIBIDOS = (Object.keys(FORMULAS_CALDRONIS) as Derivado[]).filter(
@@ -47,6 +57,18 @@ export function FichaTela({ repo, id }: Props) {
   const [erros, setErros] = useState<ErroCampo[]>([]);
   const [erroSalvar, setErroSalvar] = useState('');
   const [verTodas, setVerTodas] = useState(false);
+  const defs = useCatalogo(repo);
+
+  // Só o app do Mestre calcula o máximo dos recursos personalizados (o servidor não confere fórmula
+  // livre). Ao abrir a ficha ou mudar nível/atributo, recalcula e salva se mudou.
+  useEffect(() => {
+    if (!ficha || !ehMestre || defs.length === 0) return;
+    const r = recalcularPersonalizados(ficha, defs);
+    if (r) {
+      setFicha(r);
+      void repo.salvar(r).catch(() => {});
+    }
+  }, [ficha, defs, ehMestre, repo, setFicha]);
 
   if (ficha === undefined) return <p class="carregando">Carregando…</p>;
   if (ficha === null) return <NaoEncontrada />;
@@ -71,7 +93,7 @@ export function FichaTela({ repo, id }: Props) {
     if (r.ficha !== ficha) void salvar(r.ficha);
   };
 
-  const aplicarRecurso = (recurso: Recurso, tipo: TipoMudanca, valor: number) => {
+  const aplicarRecurso = (recurso: IdRecurso, tipo: TipoMudanca, valor: number) => {
     try {
       void salvar(aplicar(ficha, recurso, tipo, valor));
     } catch (e) {
@@ -128,6 +150,22 @@ export function FichaTela({ repo, id }: Props) {
             onExtra={(valor) => void salvar(definirExtra(ficha, r, valor))}
           />
         ))}
+        {idsPersonalizados(ficha).map((rid) => {
+          const def = defs.find((d) => d.id === rid);
+          return (
+            <BarraRecurso
+              key={rid}
+              recurso={rid}
+              nome={def?.nome ?? 'Recurso removido'}
+              cor={def?.cor}
+              atual={atualDe(ficha, rid)}
+              max={maxDe(ficha, rid)}
+              extra={extraDe(ficha, rid)}
+              onAplicar={(tipo, valor) => aplicarRecurso(rid, tipo, valor)}
+              onExtra={(valor) => void salvar(definirExtra(ficha, rid, valor))}
+            />
+          );
+        })}
         <button type="button" class="btn btn-secundario" onClick={() => void salvar(descansoLongo(ficha))}>
           Descanso longo
         </button>
@@ -141,7 +179,7 @@ export function FichaTela({ repo, id }: Props) {
           <ul>
             {ficha.historico.slice(0, HISTORICO_VISIVEL).map((e) => (
               <li key={e.id} class={`hist-${e.tipo}`}>
-                <span class="hist-recurso">{NOMES_RECURSOS[e.recurso]}</span>
+                <span class="hist-recurso">{nomeRecurso(e.recurso, defs, NOMES_RECURSOS)}</span>
                 <span>{descreverEntrada(e)}</span>
                 <Hora em={e.em} />
               </li>
@@ -214,6 +252,15 @@ export function FichaTela({ repo, id }: Props) {
           </div>
         ) : (
           <p class="vazio">Você pode mudar o extra e a perda. A base, o nível e o nome são do Mestre.</p>
+        )}
+
+        {ehMestre && defs.length > 0 && (
+          <RecursosEspeciais
+            ficha={ficha}
+            defs={defs}
+            onMudar={(nova) => void salvar(nova)}
+            onErro={(m) => setErroSalvar(m)}
+          />
         )}
 
         {erros.length > 0 && (
@@ -310,5 +357,38 @@ function CampoNumero(props: {
         }}
       />
     </label>
+  );
+}
+
+/** Mestre: quais recursos do catálogo esta ficha tem. */
+function RecursosEspeciais(props: {
+  ficha: Ficha;
+  defs: DefRecurso[];
+  onMudar: (f: Ficha) => void;
+  onErro: (mensagem: string) => void;
+}) {
+  const { ficha, defs } = props;
+  const ativos = new Set(idsPersonalizados(ficha));
+  return (
+    <fieldset class="recursos-especiais">
+      <legend>Recursos especiais</legend>
+      {defs.map((d) => (
+        <label key={d.id} class="equipar">
+          <input
+            type="checkbox"
+            checked={ativos.has(d.id)}
+            onChange={() => {
+              try {
+                props.onMudar(ativos.has(d.id) ? desabilitarRecurso(ficha, d.id) : habilitarRecurso(ficha, d));
+              } catch (e) {
+                props.onErro((e as Error).message);
+              }
+            }}
+          />
+          <span class="bolinha" style={{ background: d.cor }} aria-hidden="true" />
+          {d.nome}
+        </label>
+      ))}
+    </fieldset>
   );
 }

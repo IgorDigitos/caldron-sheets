@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { atualizarParaRegrasAtuais, type Ficha } from '../dominio/ficha';
+import type { DefRecurso } from '../dominio/recursos';
 import type { RepositorioFichas } from '../dados/repositorio';
 
 export type Aba = 'ficha' | 'inventario' | 'skills' | 'journal';
@@ -134,4 +135,20 @@ export function Entrada({ valor, onConfirmar, type = 'text', inputMode, min, ste
   };
   // O tipo do <input> no Preact 11 depende do `type` literal, por isso os dois ramos.
   return type === 'number' ? <input type="number" min={min} step={step} {...comum} /> : <input type="text" {...comum} />;
+}
+
+/** Catálogo de recursos personalizados da campanha (vazio enquanto carrega ou sem rede/cache). */
+export function useCatalogo(repo: RepositorioFichas): DefRecurso[] {
+  const [defs, setDefs] = useState<DefRecurso[]>([]);
+  useEffect(() => {
+    let vivo = true;
+    repo
+      .listarRecursos()
+      .then((l) => vivo && setDefs(l))
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, [repo]);
+  return defs;
 }

@@ -3,6 +3,7 @@
 import type { Ficha } from '../dominio/ficha';
 import type { Item } from '../dominio/inventario';
 import type { EntradaJournal } from '../dominio/journal';
+import type { DefRecurso } from '../dominio/recursos';
 import type { Skill } from '../dominio/skills';
 import type { Imagem } from '../midia/imagem';
 
@@ -43,6 +44,11 @@ export interface RepositorioFichas {
   listarJournal(fichaId: string): Promise<EntradaJournal[]>;
   salvarEntrada(entrada: EntradaJournal): Promise<void>;
   excluirEntrada(id: string): Promise<void>;
+
+  /** Catálogo de recursos personalizados da campanha (ex.: Ímpeto). */
+  listarRecursos(): Promise<DefRecurso[]>;
+  salvarRecurso(def: DefRecurso): Promise<void>;
+  excluirRecurso(id: string): Promise<void>;
 
   listarSkills(fichaId: string): Promise<Skill[]>;
   salvarSkill(skill: Skill): Promise<void>;

@@ -104,3 +104,64 @@ test('jogador abrindo ficha de outro pela URL não vê nada', async ({ page, bro
   await expect(jog.getByRole('form', { name: 'Nova conta de jogador' })).toHaveCount(0);
   await ctx.close();
 });
+
+test('Ímpeto: Mestre cria e habilita; jogador ganha e gasta numa skill', async ({ page, browser, baseURL }) => {
+  await abrirComoNovoMestre(page);
+  await page.getByRole('button', { name: 'Criar Skar de exemplo' }).click();
+  await expect(page.getByRole('heading', { name: 'Skar Lionet' })).toBeVisible();
+  const rotaSkar = new URL(page.url()).hash;
+
+  // Catálogo
+  await page.goto('/#/recursos');
+  await page.getByRole('button', { name: 'Novo recurso' }).click();
+  await page.getByLabel('Nome').fill('Ímpeto');
+  await page.getByLabel('Fórmula do máximo').fill('3 + int(NIVEL/2)');
+  await expect(page.getByTestId('previa-formula')).toHaveText('No Skar (nível 2): 4');
+  await page.getByLabel(/Começa cheio/).uncheck();
+  await page.getByRole('button', { name: 'Salvar recurso' }).click();
+  await expect(page.getByRole('button', { name: 'Editar Ímpeto' })).toBeVisible();
+
+  // Jogador e ficha
+  await page.goto('/#/jogadores');
+  const form = page.getByRole('form', { name: 'Nova conta de jogador' });
+  await form.getByLabel('Usuário').fill('thainan');
+  await form.getByLabel('Senha', { exact: true }).fill('senha-thainan');
+  await form.getByLabel('Confirmar senha').fill('senha-thainan');
+  await form.getByRole('button', { name: 'Criar conta de jogador' }).click();
+  await expect(page.getByRole('status')).toBeVisible();
+  await page.goto(`/${rotaSkar}`);
+  await page.getByText('Editar ficha').click();
+  await page.getByLabel('Jogador').selectOption({ label: 'thainan' });
+  await page.getByRole('checkbox', { name: 'Ímpeto' }).check();
+  await expect(page.getByRole('region', { name: 'Ímpeto' }).getByText('0 / 4')).toBeVisible();
+
+  // Skill com custo de Ímpeto
+  await page.getByRole('tab', { name: 'Skills' }).click();
+  await page.getByRole('button', { name: 'Editar Punhos de Pedra' }).click();
+  await page.getByRole('button', { name: '+ Adicionar custo' }).click();
+  await page.getByLabel('Recurso do custo 1').selectOption({ label: 'Ímpeto' });
+  await page.getByRole('button', { name: 'Salvar skill' }).click();
+  await expect(page.getByRole('article', { name: 'Punhos de Pedra' }).getByRole('button', { name: 'Usar (−1 Ímpeto)' })).toBeVisible();
+  await esperarSincronizado(page);
+
+  // Jogador
+  const ctx = await browser.newContext({ baseURL });
+  const jog = await ctx.newPage();
+  await entrarComo(jog, 'thainan', 'senha-thainan');
+  await jog.getByRole('link', { name: /Skar Lionet/ }).click();
+  const impeto = jog.getByRole('region', { name: 'Ímpeto' });
+  await impeto.getByLabel('Quantidade de Ímpeto').fill('2');
+  await impeto.getByRole('button', { name: 'Recuperar' }).click();
+  await expect(impeto.getByText('2 / 4')).toBeVisible();
+  await jog.getByRole('tab', { name: 'Skills' }).click();
+  await jog.getByRole('article', { name: 'Punhos de Pedra' }).getByRole('button', { name: 'Usar (−1 Ímpeto)' }).click();
+  await expect(jog.getByRole('status')).toHaveText('Usou Punhos de Pedra: −1 Ímpeto');
+  await esperarSincronizado(jog);
+  await expect(jog.getByRole('alert')).toHaveCount(0);
+
+  // O Mestre vê 1 / 4
+  await recarregar(page);
+  await page.getByRole('tab', { name: 'Ficha' }).click();
+  await expect(page.getByRole('region', { name: 'Ímpeto' }).getByText('1 / 4')).toBeVisible();
+  await ctx.close();
+});

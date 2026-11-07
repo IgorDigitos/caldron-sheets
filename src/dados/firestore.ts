@@ -31,6 +31,7 @@ import {
 import type { Ficha } from '../dominio/ficha';
 import type { Item } from '../dominio/inventario';
 import type { EntradaJournal } from '../dominio/journal';
+import type { DefRecurso } from '../dominio/recursos';
 import type { Skill } from '../dominio/skills';
 import type { Imagem } from '../midia/imagem';
 import { resumir, type PacoteFicha, type RepositorioFichas, type ResumoFicha } from './repositorio';
@@ -41,6 +42,7 @@ export const COLECOES = {
   imagens: 'imagens',
   journal: 'journal',
   skills: 'skills',
+  recursos: 'recursos',
 } as const;
 
 export interface EstadoSync {
@@ -251,6 +253,21 @@ export class RepositorioFirestore implements RepositorioFichas {
 
   excluirEntrada(id: string): Promise<void> {
     const ref = doc(this.db, COLECOES.journal, id);
+    return this.escrever(ref, () => deleteDoc(ref));
+  }
+
+  async listarRecursos(): Promise<DefRecurso[]> {
+    const defs = await this.lerLista<DefRecurso>(collection(this.db, COLECOES.recursos));
+    return defs.sort((a, b) => a.criadoEm - b.criadoEm);
+  }
+
+  salvarRecurso(def: DefRecurso): Promise<void> {
+    const ref = doc(this.db, COLECOES.recursos, def.id);
+    return this.escrever(ref, () => setDoc(ref, def));
+  }
+
+  excluirRecurso(id: string): Promise<void> {
+    const ref = doc(this.db, COLECOES.recursos, id);
     return this.escrever(ref, () => deleteDoc(ref));
   }
 

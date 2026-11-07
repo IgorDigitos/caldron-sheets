@@ -14,6 +14,7 @@ import { PORTAS_EMULADOR, PROJETO_EMULADOR } from './config';
 import { alterar, aplicar, criarFicha, definirExtra, descansoLongo, type Ficha } from '../dominio/ficha';
 import { movimentarMoeda } from '../dominio/inventario';
 import { criarSkill, usarSkill } from '../dominio/skills';
+import { criarDefRecurso, desabilitarRecurso, habilitarRecurso } from '../dominio/recursos';
 import { SKAR } from '../rules/fixtures/skar';
 
 let env: RulesTestEnvironment;
@@ -240,5 +241,51 @@ describe('contas', () => {
   it('Mestre continua podendo tudo na ficha do jogador', async () => {
     const f = alterado(skarDoJogador(), { tipo: 'atributo', atributo: 'FOR', parte: 'base' }, 12, 2000);
     await assertSucceeds(mestre().doc('personagens/skar').set(json({ ...f, nome: 'Skar II', donoUid: OUTRO })));
+  });
+});
+
+describe('recursos personalizados', () => {
+  const IMPETO = criarDefRecurso({ nome: 'Ímpeto', formula: '3 + int(NIVEL/2)', comecaCheio: false }, 1);
+  const comImpeto = (): Ficha => json({ ...habilitarRecurso(skarDoJogador(), IMPETO, 1000), id: 'skar', donoUid: JOGADOR });
+
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled((ctx) => ctx.firestore().doc('personagens/skar').set(comImpeto()));
+  });
+
+  it('catálogo: todos logados leem, só o Mestre escreve', async () => {
+    await assertSucceeds(mestre().doc(`recursos/${IMPETO.id}`).set(json(IMPETO)));
+    await assertSucceeds(jogador().doc(`recursos/${IMPETO.id}`).get());
+    await assertSucceeds(jogador().collection('recursos').get());
+    await assertFails(jogador().doc('recursos/rec-x').set({ ...json(IMPETO), id: 'rec-x' }));
+    await assertFails(env.unauthenticatedContext().firestore().collection('recursos').get());
+  });
+
+  it('jogador ganha e gasta Ímpeto dentro do máximo', async () => {
+    let f = aplicar(comImpeto(), IMPETO.id, 'cura', 3, 2000);
+    expect(f.personalizados![IMPETO.id]).toBe(3);
+    await assertSucceeds(gravar(f));
+    f = aplicar(f, IMPETO.id, 'dano', 1, 3000);
+    await assertSucceeds(gravar(f));
+  });
+
+  it('jogador usa skill que custa Ímpeto', async () => {
+    const f = aplicar(comImpeto(), IMPETO.id, 'cura', 2, 2000);
+    const s = criarSkill('skar', { nome: 'Punhos de Pedra (+1d4)', custos: [{ recurso: IMPETO.id, valor: 1 }] });
+    await assertSucceeds(gravar(usarSkill(f, s, 3000)));
+  });
+
+  it('jogador NÃO passa do máximo, não fica negativo, não muda o máximo nem a lista', async () => {
+    const f = { ...comImpeto(), atualizadoEm: 2000 };
+    await assertFails(gravar({ ...f, personalizados: { [IMPETO.id]: 5 } }));
+    await assertFails(gravar({ ...f, personalizados: { [IMPETO.id]: -1 } }));
+    await assertFails(gravar({ ...f, maxPersonalizados: { [IMPETO.id]: 99 }, personalizados: { [IMPETO.id]: 99 } }));
+    await assertFails(gravar(desabilitarRecurso(comImpeto(), IMPETO.id, 2000)));
+    await assertFails(gravar({ ...f, personalizados: { ...f.personalizados, 'rec-inventado': 1 } }));
+  });
+
+  it('Mestre habilita, recalcula e desabilita', async () => {
+    const outra = criarDefRecurso({ nome: 'Fúria', formula: 'CON', comecaCheio: true }, 1);
+    await assertSucceeds(mestre().doc('personagens/skar').set(json(habilitarRecurso({ ...comImpeto(), atualizadoEm: 2000 }, outra, 2000))));
+    await assertSucceeds(mestre().doc('personagens/skar').set(json(desabilitarRecurso({ ...comImpeto(), atualizadoEm: 3000 }, IMPETO.id, 3000))));
   });
 });

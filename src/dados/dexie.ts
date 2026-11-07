@@ -2,6 +2,7 @@ import Dexie, { type EntityTable } from 'dexie';
 import type { Ficha } from '../dominio/ficha';
 import { carteiraVazia, type Item } from '../dominio/inventario';
 import type { EntradaJournal } from '../dominio/journal';
+import type { DefRecurso } from '../dominio/recursos';
 import type { Skill } from '../dominio/skills';
 import type { Imagem } from '../midia/imagem';
 import { resumir, type PacoteFicha, type RepositorioFichas, type ResumoFicha } from './repositorio';
@@ -12,6 +13,7 @@ class BancoCaldron extends Dexie {
   imagens!: EntityTable<Imagem, 'id'>;
   journal!: EntityTable<EntradaJournal, 'id'>;
   skills!: EntityTable<Skill, 'id'>;
+  recursos!: EntityTable<DefRecurso, 'id'>;
 
   constructor(nome: string) {
     super(nome);
@@ -53,6 +55,15 @@ class BancoCaldron extends Dexie {
       imagens: 'id, fichaId',
       journal: 'id, fichaId',
       skills: 'id, fichaId',
+    });
+    // v5: catálogo de recursos personalizados.
+    this.version(5).stores({
+      fichas: 'id, nome, atualizadoEm',
+      itens: 'id, fichaId',
+      imagens: 'id, fichaId',
+      journal: 'id, fichaId',
+      skills: 'id, fichaId',
+      recursos: 'id',
     });
   }
 }
@@ -124,6 +135,18 @@ export class RepositorioDexie implements RepositorioFichas {
 
   async excluirEntrada(id: string): Promise<void> {
     await this.db.journal.delete(id);
+  }
+
+  async listarRecursos(): Promise<DefRecurso[]> {
+    return (await this.db.recursos.toArray()).sort((a, b) => a.criadoEm - b.criadoEm);
+  }
+
+  async salvarRecurso(def: DefRecurso): Promise<void> {
+    await this.db.recursos.put(def);
+  }
+
+  async excluirRecurso(id: string): Promise<void> {
+    await this.db.recursos.delete(id);
   }
 
   listarSkills(fichaId: string): Promise<Skill[]> {

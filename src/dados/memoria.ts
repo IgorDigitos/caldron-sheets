@@ -1,6 +1,7 @@
 import type { Ficha } from '../dominio/ficha';
 import type { Item } from '../dominio/inventario';
 import type { EntradaJournal } from '../dominio/journal';
+import type { DefRecurso } from '../dominio/recursos';
 import type { Skill } from '../dominio/skills';
 import type { Imagem } from '../midia/imagem';
 import { resumir, type PacoteFicha, type RepositorioFichas, type ResumoFicha } from './repositorio';
@@ -16,6 +17,7 @@ export class RepositorioMemoria implements RepositorioFichas {
   private readonly imagens = new Map<string, Imagem>();
   private readonly journal = new Map<string, EntradaJournal>();
   private readonly skills = new Map<string, Skill>();
+  private readonly recursos = new Map<string, DefRecurso>();
 
   async listar(): Promise<ResumoFicha[]> {
     return [...this.fichas.values()].sort((a, b) => b.atualizadoEm - a.atualizadoEm).map(resumir);
@@ -72,6 +74,18 @@ export class RepositorioMemoria implements RepositorioFichas {
 
   async excluirEntrada(id: string): Promise<void> {
     this.journal.delete(id);
+  }
+
+  async listarRecursos(): Promise<DefRecurso[]> {
+    return [...this.recursos.values()].map(copia).sort((a, b) => a.criadoEm - b.criadoEm);
+  }
+
+  async salvarRecurso(def: DefRecurso): Promise<void> {
+    this.recursos.set(def.id, copia(def));
+  }
+
+  async excluirRecurso(id: string): Promise<void> {
+    this.recursos.delete(id);
   }
 
   async listarSkills(fichaId: string): Promise<Skill[]> {
