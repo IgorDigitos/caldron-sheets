@@ -75,8 +75,8 @@ describe('FichaTela', () => {
     const con = screen.getByLabelText('Constituição extra');
     fireEvent.change(con, { target: { value: '2' } });
     expect(screen.getByTestId('atual-CON').textContent).toBe('7');
-    expect(screen.getByTestId('valor-VIDA').textContent).toBe('45 / 56,3');
-    await waitFor(async () => expect((await repo.obter(ficha.id))!.maximos.VIDA).toBeCloseTo(56.33, 1));
+    expect(screen.getByTestId('valor-VIDA').textContent).toBe('45 / 56');
+    await waitFor(async () => expect((await repo.obter(ficha.id))!.maximos.VIDA).toBe(56));
   });
 
   it('perder CON corta a Vida atual', async () => {
@@ -125,7 +125,7 @@ describe('FichaTela', () => {
     expect(itens).toHaveLength(2);
     expect(itens[0]!.textContent).toContain('Nível 2 → 3');
     expect(itens[1]!.textContent).toContain('Constituição extra 0 → 2');
-    expect(itens[1]!.textContent).toContain('Vida máx. 45 → 56,3');
+    expect(itens[1]!.textContent).toContain('Vida máx. 45 → 56');
     expect(itens[0]!.className).toBe('alt-subiu');
 
     await waitFor(async () => expect((await repo.obter(ficha.id))!.alteracoes).toHaveLength(2));
@@ -202,6 +202,18 @@ describe('FichaTela', () => {
     expect(screen.getByRole('tab', { name: 'Ficha' }).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('tab', { name: 'Inventário' }).getAttribute('href')).toBe(`#/ficha/${ficha.id}/inventario`);
     expect(screen.getByRole('tab', { name: 'Journal' }).getAttribute('href')).toBe(`#/ficha/${ficha.id}/journal`);
+  });
+
+  it('ficha salva com máximo quebrado (regra antiga) abre arredondada e é salva assim', async () => {
+    const repo = new RepositorioMemoria();
+    const f = criarFicha({ nome: 'Rogerin', ...SKAR });
+    const antiga = { ...f, maximos: { ...f.maximos, VIDA: 38.7, STA: 16.7 }, atuais: { ...f.atuais, VIDA: 12, STA: 16.7 } };
+    await repo.salvar(antiga);
+    render(<FichaTela repo={repo} id={f.id} />);
+    await screen.findByRole('heading', { name: 'Rogerin' });
+    expect(screen.getByTestId('valor-VIDA').textContent).toBe('12 / 45');
+    expect(screen.getByTestId('valor-STA').textContent).toBe('20 / 20');
+    await waitFor(async () => expect((await repo.obter(f.id))!.maximos.STA).toBe(20));
   });
 
   it('erro ao salvar aparece na tela', async () => {

@@ -46,13 +46,15 @@ Os testes E2E rodam um por vez (todos limpam e usam o mesmo emulador).
 
 - `parser.ts` — tokeniza e interpreta fórmulas: números, símbolos (sem diferenciar maiúsculas),
   `+ - * /` (também `× ÷ −`), parênteses e as funções `media`, `soma`, `min`, `max`, `int`
-  (`int` = INT do Excel, arredonda para baixo). Qualquer outra coisa vira `ErroFormula` com mensagem
+  (`int` = INT do Excel, arredonda para baixo) e `arred` (inteiro mais próximo). Qualquer outra coisa vira `ErroFormula` com mensagem
   em português.
 - `motor.ts` — `calcular(formulas, entradas, ajustes)` ordena por dependência, detecta ciclo e
   símbolo desconhecido e devolve `{ ok, valores }` ou `{ ok: false, erros }`. Nunca lança por
   erro do Mestre. `formatar()` arredonda só para exibir (1 casa, pt-BR).
 - `caldronis.ts` — preset do sistema. Atributo atual = base + extra − perda, e **todas** as
-  fórmulas usam o atual (inclusive CON em Vida/STA/Def). Decimais são mantidos até a tela.
+  fórmulas usam o atual (inclusive CON em Vida/STA/Def). **Vida, STA e Mana máximas são inteiras**
+  (`arred()`, mais próximo, ,5 sobe). Corpo, Mente, defesas e deslocamento guardam decimais até a tela.
+  Ficha salva com regra antiga é recalculada ao abrir (`atualizarParaRegrasAtuais`).
 - `fixtures/skar.ts` — **Skar Lionet** é o personagem de referência (planilha
   `C:\RPG KRAIO\Players\Thainan\Skar.xlsx`). Não use o Ez'kher: foi aposentado.
 

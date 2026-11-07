@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   alterar,
   aplicar,
+  atualizarParaRegrasAtuais,
   criarFicha,
   descreverEfeitos,
   descreverEntrada,
@@ -152,7 +153,7 @@ describe('recalcular', () => {
     const f = skar();
     const r = recalcular({ ...f, atributos: { ...f.atributos, CON: { base: 5, extra: 2 } } }, T + 5);
     if (!r.ok) throw new Error('falhou');
-    expect(r.ficha.maximos.VIDA).toBeCloseTo(56.333, 2);
+    expect(r.ficha.maximos.VIDA).toBe(56);
     expect(r.ficha.atuais.VIDA).toBe(45);
     expect(r.ficha.atualizadoEm).toBe(T + 5);
   });
@@ -190,12 +191,12 @@ describe('alterar (histórico de atributos)', () => {
     const [e] = r.ficha.alteracoes;
     expect(e).toMatchObject({ alvo: CON_EXTRA, de: 0, para: 2, em: T + 10 });
     expect(e!.efeitos.VIDA!.de).toBe(45);
-    expect(e!.efeitos.VIDA!.para).toBeCloseTo(56.333, 2);
+    expect(e!.efeitos.VIDA!.para).toBe(56);
     expect(e!.efeitos.MANA).toBeUndefined();
     expect(nomeAlvo(e!.alvo)).toBe('Constituição extra');
-    expect(descreverEfeitos(e!)).toBe('Vida máx. 45 → 56,3 · Stamina máx. 20 → 23,3');
+    expect(descreverEfeitos(e!)).toBe('Vida máx. 45 → 56 · Stamina máx. 20 → 23');
     expect(r.ficha.atributos.CON).toEqual({ base: 5, extra: 2 });
-    expect(r.ficha.maximos.VIDA).toBeCloseTo(56.333, 2);
+    expect(r.ficha.maximos.VIDA).toBe(56);
   });
 
   it('nível', () => {
@@ -245,6 +246,35 @@ describe('alterar (histórico de atributos)', () => {
     const r = alterar(antiga, { tipo: 'nivel' }, 4);
     if (!r.ok) throw new Error('falhou');
     expect(r.ficha.alteracoes).toHaveLength(1);
+  });
+});
+
+describe('atualizarParaRegrasAtuais (fichas salvas antes do arredondamento)', () => {
+  const antiga = (): Ficha => {
+    const f = skar();
+    // Como o Rogerin estava salvo: máximos com decimais.
+    return {
+      ...f,
+      maximos: { ...f.maximos, VIDA: 38.7, STA: 16.7, MANA: 16 },
+      atuais: { VIDA: 12, STA: 16.7, MANA: 8 },
+    };
+  };
+
+  it('recalcula os máximos; quem estava cheio continua cheio', () => {
+    const f = atualizarParaRegrasAtuais(antiga(), T + 1)!;
+    expect(f.maximos.VIDA).toBe(45);
+    expect(f.maximos.STA).toBe(20);
+    expect(f.atuais).toEqual({ VIDA: 12, STA: 20, MANA: 8 });
+    expect(f.atualizadoEm).toBe(T + 1);
+  });
+
+  it('ficha já em dia não muda', () => {
+    expect(atualizarParaRegrasAtuais(skar())).toBeNull();
+  });
+
+  it('ficha com atributo inválido não é mexida', () => {
+    const f = skar();
+    expect(atualizarParaRegrasAtuais({ ...f, atributos: { ...f.atributos, FOR: { base: Number.NaN } } })).toBeNull();
   });
 });
 

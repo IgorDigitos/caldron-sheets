@@ -182,6 +182,22 @@ export function descreverEfeitos(e: EntradaAlteracao): string {
     .join(' · ');
 }
 
+/**
+ * Recalcula uma ficha salva com regras antigas (ex.: Vida máx. 38,7 antes do arredondamento).
+ * Recurso que estava cheio continua cheio no máximo novo. Devolve `null` se nada mudou.
+ */
+export function atualizarParaRegrasAtuais(ficha: Ficha, agora = Date.now()): Ficha | null {
+  const r = recalcular(ficha, agora);
+  if (!r.ok) return null;
+  const mudou = (Object.keys(r.ficha.maximos) as Derivado[]).some((d) => r.ficha.maximos[d] !== ficha.maximos[d]);
+  if (!mudou) return null;
+  const atuais = { ...r.ficha.atuais };
+  for (const rec of RECURSOS) {
+    if (ficha.atuais[rec] === ficha.maximos[rec]) atuais[rec] = r.ficha.maximos[rec];
+  }
+  return { ...r.ficha, atuais };
+}
+
 export class ValorInvalido extends Error {}
 
 /** Aplica dano (ou gasto) e cura (ou recuperação). Respeita o piso e o máximo de cada recurso. */

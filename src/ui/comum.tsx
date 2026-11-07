@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { Ficha } from '../dominio/ficha';
+import { atualizarParaRegrasAtuais, type Ficha } from '../dominio/ficha';
 import type { RepositorioFichas } from '../dados/repositorio';
 
 export type Aba = 'ficha' | 'inventario' | 'journal';
@@ -46,12 +46,20 @@ export function Cabecalho({ ficha }: { ficha: Ficha }) {
   );
 }
 
-/** Carrega a ficha; `null` = não existe, `undefined` = carregando. */
+/**
+ * Carrega a ficha; `null` = não existe, `undefined` = carregando. Ficha salva com regras antigas é
+ * recalculada e salva de novo (ex.: Vida máx. 38,7 → 39).
+ */
 export function useFicha(repo: RepositorioFichas, id: string) {
   const [ficha, setFicha] = useState<Ficha | null | undefined>(undefined);
   useEffect(() => {
     let vivo = true;
-    repo.obter(id).then((f) => vivo && setFicha(f ?? null));
+    repo.obter(id).then((f) => {
+      if (!vivo) return;
+      const atualizada = f && atualizarParaRegrasAtuais(f);
+      if (atualizada) void repo.salvar(atualizada).catch(() => {});
+      setFicha(atualizada ?? f ?? null);
+    });
     return () => {
       vivo = false;
     };

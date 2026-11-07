@@ -2,6 +2,7 @@
 // Decisões do Mestre (2026-11-06):
 // - Vida, STA e Def. Natural usam a CON atual (base + extra − perda), não a base.
 // - Corpo e Mente guardam decimais; arredondar só na tela (ver formatar()).
+// - Vida, STA e Mana máximas são inteiras: arredondadas para o mais próximo (2026-11-06).
 // - Vida atual pode ficar negativa (tratado na etapa 2).
 
 import { calcular, type ResultadoCalculo } from './motor';
@@ -21,9 +22,9 @@ export const NOMES_ATRIBUTOS: Record<Atributo, string> = {
 export const FORMULAS_CALDRONIS = {
   CORPO: 'media(FOR, DES, CON)',
   MENTE: 'media(INT, SAB, CAR)',
-  VIDA: 'NIVEL*5 + CORPO*2 + CON*5',
-  STA: '5 + CORPO*2 + CON',
-  MANA: '5 + MENTE*3',
+  VIDA: 'arred(NIVEL*5 + CORPO*2 + CON*5)',
+  STA: 'arred(5 + CORPO*2 + CON)',
+  MANA: 'arred(5 + MENTE*3)',
   PA: '4 + int(NIVEL/5)',
   DESLOCAMENTO: '7.5 + int(CORPO/3)*1.5',
   DEF_NATURAL: 'CORPO + CON/2',
