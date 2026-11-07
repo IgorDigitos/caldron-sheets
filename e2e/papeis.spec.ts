@@ -52,6 +52,15 @@ test('Mestre cria o jogador e entrega a ficha; jogador joga e o servidor aceita'
   await esperarSincronizado(jog);
   await expect(jog.getByRole('alert')).toHaveCount(0); // servidor não recusou nada
 
+  // Skills: o jogador vê e usa, mas não edita.
+  await jog.getByRole('tab', { name: 'Skills' }).click();
+  const guarda = jog.getByRole('article', { name: 'Guarda de Impacto' });
+  await expect(jog.getByRole('button', { name: /^Editar/ })).toHaveCount(0);
+  await guarda.getByRole('button', { name: 'Usar (−2 Stamina)' }).click();
+  await expect(jog.getByRole('status')).toHaveText('Usou Guarda de Impacto: −2 Stamina');
+  await esperarSincronizado(jog);
+  await expect(jog.getByRole('alert')).toHaveCount(0);
+
   // O jogador vai para o inventário e o journal da própria ficha.
   await jog.getByRole('tab', { name: 'Journal' }).click();
   await jog.getByRole('button', { name: 'Nova entrada' }).click();
@@ -63,6 +72,8 @@ test('Mestre cria o jogador e entrega a ficha; jogador joga e o servidor aceita'
   // O Mestre vê tudo.
   await recarregar(page);
   await expect(page.getByTestId('valor-VIDA')).toHaveText('37 / 56');
+  await expect(page.getByTestId('valor-STA')).toHaveText(/^18 \//);
+  await expect(page.getByRole('region', { name: 'Histórico', exact: true })).toContainText('−2 gasto (Guarda de Impacto)');
   await page.getByRole('tab', { name: 'Journal' }).click();
   await expect(page.getByRole('heading', { name: 'Diário do Skar' })).toBeVisible();
   await ctx.close();

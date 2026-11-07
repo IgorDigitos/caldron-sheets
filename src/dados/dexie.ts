@@ -2,6 +2,7 @@ import Dexie, { type EntityTable } from 'dexie';
 import type { Ficha } from '../dominio/ficha';
 import { carteiraVazia, type Item } from '../dominio/inventario';
 import type { EntradaJournal } from '../dominio/journal';
+import type { Skill } from '../dominio/skills';
 import type { Imagem } from '../midia/imagem';
 import { resumir, type PacoteFicha, type RepositorioFichas, type ResumoFicha } from './repositorio';
 
@@ -10,6 +11,7 @@ class BancoCaldron extends Dexie {
   itens!: EntityTable<Item, 'id'>;
   imagens!: EntityTable<Imagem, 'id'>;
   journal!: EntityTable<EntradaJournal, 'id'>;
+  skills!: EntityTable<Skill, 'id'>;
 
   constructor(nome: string) {
     super(nome);
@@ -44,6 +46,14 @@ class BancoCaldron extends Dexie {
             f.carteira ??= carteiraVazia();
           }),
       );
+    // v4: skills.
+    this.version(4).stores({
+      fichas: 'id, nome, atualizadoEm',
+      itens: 'id, fichaId',
+      imagens: 'id, fichaId',
+      journal: 'id, fichaId',
+      skills: 'id, fichaId',
+    });
   }
 }
 
@@ -68,8 +78,8 @@ export class RepositorioDexie implements RepositorioFichas {
   }
 
   async excluir(id: string): Promise<void> {
-    const { fichas, itens, imagens, journal } = this.db;
-    await this.db.transaction('rw', [fichas, itens, imagens, journal], () => this.excluirTudo(id));
+    const { fichas, itens, imagens, journal, skills } = this.db;
+    await this.db.transaction('rw', [fichas, itens, imagens, journal, skills], () => this.excluirTudo(id));
   }
 
   private async excluirTudo(id: string): Promise<void> {
@@ -77,6 +87,7 @@ export class RepositorioDexie implements RepositorioFichas {
     await this.db.itens.where('fichaId').equals(id).delete();
     await this.db.imagens.where('fichaId').equals(id).delete();
     await this.db.journal.where('fichaId').equals(id).delete();
+    await this.db.skills.where('fichaId').equals(id).delete();
   }
 
   listarItens(fichaId: string): Promise<Item[]> {
@@ -115,9 +126,21 @@ export class RepositorioDexie implements RepositorioFichas {
     await this.db.journal.delete(id);
   }
 
+  listarSkills(fichaId: string): Promise<Skill[]> {
+    return this.db.skills.where('fichaId').equals(fichaId).toArray();
+  }
+
+  async salvarSkill(skill: Skill): Promise<void> {
+    await this.db.skills.put(skill);
+  }
+
+  async excluirSkill(id: string): Promise<void> {
+    await this.db.skills.delete(id);
+  }
+
   async obterPacote(fichaId: string): Promise<PacoteFicha | undefined> {
-    const { fichas, itens, imagens, journal } = this.db;
-    return this.db.transaction('r', [fichas, itens, imagens, journal], async () => {
+    const { fichas, itens, imagens, journal, skills } = this.db;
+    return this.db.transaction('r', [fichas, itens, imagens, journal, skills], async () => {
       const ficha = await fichas.get(fichaId);
       if (!ficha) return undefined;
       return {
@@ -125,18 +148,20 @@ export class RepositorioDexie implements RepositorioFichas {
         itens: await itens.where('fichaId').equals(fichaId).toArray(),
         imagens: await imagens.where('fichaId').equals(fichaId).toArray(),
         journal: await journal.where('fichaId').equals(fichaId).toArray(),
+        skills: await skills.where('fichaId').equals(fichaId).toArray(),
       };
     });
   }
 
   async gravarPacote(p: PacoteFicha): Promise<void> {
-    const { fichas, itens, imagens, journal } = this.db;
-    await this.db.transaction('rw', [fichas, itens, imagens, journal], async () => {
+    const { fichas, itens, imagens, journal, skills } = this.db;
+    await this.db.transaction('rw', [fichas, itens, imagens, journal, skills], async () => {
       await this.excluirTudo(p.ficha.id);
       await fichas.put(p.ficha);
       await itens.bulkPut(p.itens);
       await imagens.bulkPut(p.imagens);
       await journal.bulkPut(p.journal);
+      await skills.bulkPut(p.skills);
     });
   }
 

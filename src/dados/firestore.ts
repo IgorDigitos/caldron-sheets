@@ -31,6 +31,7 @@ import {
 import type { Ficha } from '../dominio/ficha';
 import type { Item } from '../dominio/inventario';
 import type { EntradaJournal } from '../dominio/journal';
+import type { Skill } from '../dominio/skills';
 import type { Imagem } from '../midia/imagem';
 import { resumir, type PacoteFicha, type RepositorioFichas, type ResumoFicha } from './repositorio';
 
@@ -39,6 +40,7 @@ export const COLECOES = {
   itens: 'itens',
   imagens: 'imagens',
   journal: 'journal',
+  skills: 'skills',
 } as const;
 
 export interface EstadoSync {
@@ -195,7 +197,7 @@ export class RepositorioFirestore implements RepositorioFichas {
 
   async excluir(id: string): Promise<void> {
     const refs = [doc(this.db, COLECOES.fichas, id)];
-    for (const c of [COLECOES.itens, COLECOES.imagens, COLECOES.journal]) {
+    for (const c of [COLECOES.itens, COLECOES.imagens, COLECOES.journal, COLECOES.skills]) {
       const q = this.daFicha(c, id);
       const snap = offline() ? await getDocsFromCache(q) : await getDocs(q).catch(() => getDocsFromCache(q));
       refs.push(...snap.docs.map((d) => d.ref));
@@ -252,17 +254,32 @@ export class RepositorioFirestore implements RepositorioFichas {
     return this.escrever(ref, () => deleteDoc(ref));
   }
 
+  listarSkills(fichaId: string): Promise<Skill[]> {
+    return this.lerLista<Skill>(this.daFicha(COLECOES.skills, fichaId));
+  }
+
+  salvarSkill(skill: Skill): Promise<void> {
+    const ref = doc(this.db, COLECOES.skills, skill.id);
+    return this.escrever(ref, () => setDoc(ref, skill));
+  }
+
+  excluirSkill(id: string): Promise<void> {
+    const ref = doc(this.db, COLECOES.skills, id);
+    return this.escrever(ref, () => deleteDoc(ref));
+  }
+
   // ---------- pacote (backup / migração) ----------
 
   async obterPacote(fichaId: string): Promise<PacoteFicha | undefined> {
     const ficha = await this.obter(fichaId);
     if (!ficha) return undefined;
-    const [itens, imagens, journal] = await Promise.all([
+    const [itens, imagens, journal, skills] = await Promise.all([
       this.listarItens(fichaId),
       this.lerLista<Imagem>(this.daFicha(COLECOES.imagens, fichaId)),
       this.listarJournal(fichaId),
+      this.listarSkills(fichaId),
     ]);
-    return { ficha, itens, imagens, journal };
+    return { ficha, itens, imagens, journal, skills };
   }
 
   /**
@@ -275,6 +292,7 @@ export class RepositorioFirestore implements RepositorioFichas {
       { ref: doc(this.db, COLECOES.fichas, p.ficha.id), dados: p.ficha, bytes: 0 },
       ...p.itens.map((i) => ({ ref: doc(this.db, COLECOES.itens, i.id), dados: i, bytes: 0 })),
       ...p.journal.map((e) => ({ ref: doc(this.db, COLECOES.journal, e.id), dados: e, bytes: 0 })),
+      ...p.skills.map((s) => ({ ref: doc(this.db, COLECOES.skills, s.id), dados: s, bytes: 0 })),
       ...p.imagens.map((i) => ({ ref: doc(this.db, COLECOES.imagens, i.id), dados: i, bytes: i.dataUrl.length })),
     ];
     let lote = writeBatch(this.db);

@@ -7,7 +7,9 @@ export const FORMATO = 'caldron-sheets';
 export const VERSAO_EXPORT = 1;
 const MAX_BYTES = 20 * 1024 * 1024;
 
-export interface ArquivoExport extends PacoteFicha {
+export interface ArquivoExport extends Omit<PacoteFicha, 'skills'> {
+  /** Ausente em backups feitos antes das skills. */
+  skills?: PacoteFicha['skills'];
   formato: typeof FORMATO;
   versao: number;
   exportadoEm: string;
@@ -86,6 +88,10 @@ export function lerArquivo(texto: string): ArquivoExport {
       (o.imagens === undefined || (Array.isArray(o.imagens) && o.imagens.every((id) => ehTexto(id) && idsImagens.has(id)))),
   );
 
+  if (dados.skills !== undefined) {
+    validarLista(dados.skills, 'skills', f.id, (o) => ehTexto(o.nome) && ehTexto(o.categoria) && ehTexto(o.descricao));
+  }
+
   return dados as unknown as ArquivoExport;
 }
 
@@ -94,7 +100,7 @@ function completar(a: ArquivoExport): PacoteFicha {
   const ficha = { ...a.ficha };
   ficha.alteracoes ??= [];
   ficha.carteira ??= carteiraVazia();
-  return { ficha, itens: a.itens, imagens: a.imagens, journal: a.journal };
+  return { ficha, itens: a.itens, imagens: a.imagens, journal: a.journal, skills: a.skills ?? [] };
 }
 
 export async function importarFicha(repo: RepositorioFichas, arquivo: ArquivoExport): Promise<string> {

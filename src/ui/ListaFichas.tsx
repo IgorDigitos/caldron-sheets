@@ -4,7 +4,9 @@ import { criarFicha } from '../dominio/ficha';
 import { importarFicha, lerArquivo } from '../dados/exportacao';
 import type { RepositorioFichas, ResumoFicha } from '../dados/repositorio';
 import { nomeDoJogador, useSessao } from './papel';
+import { criarSkill, type DadosSkill } from '../dominio/skills';
 import { SKAR } from '../rules/fixtures/skar';
+import { SKAR_SKILLS } from '../rules/fixtures/skarSkills';
 
 interface Props {
   repo: RepositorioFichas;
@@ -33,10 +35,12 @@ export function ListaFichas({ repo, navegar, aviso }: Props) {
     void carregar();
   }, [repo]);
 
-  const criar = (dados: Parameters<typeof criarFicha>[0]) =>
+  const criar = (dados: Parameters<typeof criarFicha>[0], skills: DadosSkill[] = []) =>
     tentar('criar a ficha', async () => {
       const f = criarFicha(dados);
       await repo.salvar(f);
+      const agora = Date.now();
+      for (const [i, s] of skills.entries()) await repo.salvarSkill(criarSkill(f.id, s, agora + i));
       navegar(`/ficha/${f.id}`);
     });
 
@@ -119,7 +123,7 @@ export function ListaFichas({ repo, navegar, aviso }: Props) {
             type="button"
             class="btn btn-secundario"
             onClick={() =>
-              void criar({ nome: 'Skar Lionet', raca: 'Humano', classe: 'Pugilista', ...SKAR })
+              void criar({ nome: 'Skar Lionet', raca: 'Humano', classe: 'Pugilista', ...SKAR }, SKAR_SKILLS)
             }
           >
             Criar Skar de exemplo

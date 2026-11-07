@@ -1,6 +1,7 @@
 import type { Ficha } from '../dominio/ficha';
 import type { Item } from '../dominio/inventario';
 import type { EntradaJournal } from '../dominio/journal';
+import type { Skill } from '../dominio/skills';
 import type { Imagem } from '../midia/imagem';
 import { resumir, type PacoteFicha, type RepositorioFichas, type ResumoFicha } from './repositorio';
 
@@ -14,6 +15,7 @@ export class RepositorioMemoria implements RepositorioFichas {
   private readonly itens = new Map<string, Item>();
   private readonly imagens = new Map<string, Imagem>();
   private readonly journal = new Map<string, EntradaJournal>();
+  private readonly skills = new Map<string, Skill>();
 
   async listar(): Promise<ResumoFicha[]> {
     return [...this.fichas.values()].sort((a, b) => b.atualizadoEm - a.atualizadoEm).map(resumir);
@@ -30,7 +32,7 @@ export class RepositorioMemoria implements RepositorioFichas {
 
   async excluir(id: string): Promise<void> {
     this.fichas.delete(id);
-    for (const m of [this.itens, this.imagens, this.journal] as Map<string, { fichaId: string }>[]) {
+    for (const m of [this.itens, this.imagens, this.journal, this.skills] as Map<string, { fichaId: string }>[]) {
       for (const [k, v] of m) if (v.fichaId === id) m.delete(k);
     }
   }
@@ -72,6 +74,18 @@ export class RepositorioMemoria implements RepositorioFichas {
     this.journal.delete(id);
   }
 
+  async listarSkills(fichaId: string): Promise<Skill[]> {
+    return deFicha(this.skills, fichaId);
+  }
+
+  async salvarSkill(skill: Skill): Promise<void> {
+    this.skills.set(skill.id, copia(skill));
+  }
+
+  async excluirSkill(id: string): Promise<void> {
+    this.skills.delete(id);
+  }
+
   async obterPacote(fichaId: string): Promise<PacoteFicha | undefined> {
     const ficha = await this.obter(fichaId);
     if (!ficha) return undefined;
@@ -80,6 +94,7 @@ export class RepositorioMemoria implements RepositorioFichas {
       itens: deFicha(this.itens, fichaId),
       imagens: deFicha(this.imagens, fichaId),
       journal: deFicha(this.journal, fichaId),
+      skills: deFicha(this.skills, fichaId),
     };
   }
 
@@ -89,5 +104,6 @@ export class RepositorioMemoria implements RepositorioFichas {
     p.itens.forEach((i) => this.itens.set(i.id, copia(i)));
     p.imagens.forEach((i) => this.imagens.set(i.id, copia(i)));
     p.journal.forEach((e) => this.journal.set(e.id, copia(e)));
+    p.skills.forEach((s) => this.skills.set(s.id, copia(s)));
   }
 }

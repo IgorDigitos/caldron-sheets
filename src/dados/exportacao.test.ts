@@ -4,6 +4,7 @@ import { RepositorioMemoria } from './memoria';
 import { aplicar, alterar, criarFicha } from '../dominio/ficha';
 import { criarItem, movimentarMoeda } from '../dominio/inventario';
 import { criarEntrada } from '../dominio/journal';
+import { criarSkill } from '../dominio/skills';
 import { SKAR } from '../rules/fixtures/skar';
 import type { Imagem } from '../midia/imagem';
 
@@ -24,6 +25,7 @@ async function skarCompleto() {
   await repo.salvarEntrada(
     criarEntrada(ficha.id, { titulo: 'Sessão 1', texto: 'Skar derrubou o ogro.', sessao: 1, imagens: ['img2'] }),
   );
+  await repo.salvarSkill(criarSkill(ficha.id, { nome: 'Guarda de Impacto', custos: [{ recurso: 'STA', valor: 2 }] }));
   return { repo, ficha };
 }
 
@@ -46,6 +48,8 @@ describe('exportar e importar', () => {
     expect(ordenar(importado.itens)).toEqual(ordenar(original.itens));
     expect(ordenar(importado.imagens)).toEqual(ordenar(original.imagens));
     expect(importado.journal[0]!.imagens).toEqual(['img2']);
+    expect(importado.skills).toEqual(original.skills);
+    expect(importado.skills[0]!.custos).toEqual([{ recurso: 'STA', valor: 2 }]);
     expect(importado.ficha.carteira.historico!.map((h) => h.moeda)).toEqual(['alma', 'ouro']);
     expect(importado.journal).toEqual(original.journal);
   });
@@ -67,11 +71,13 @@ describe('exportar e importar', () => {
     const arquivo = JSON.parse(JSON.stringify(await exportarFicha(repo, ficha.id))) as ArquivoExport;
     delete (arquivo.ficha as Partial<typeof arquivo.ficha>).carteira;
     delete (arquivo.ficha as Partial<typeof arquivo.ficha>).alteracoes;
+    delete arquivo.skills; // backup feito antes das skills
     const outro = new RepositorioMemoria();
     await importarFicha(outro, lerArquivo(JSON.stringify(arquivo)));
     const f = (await outro.obter(ficha.id))!;
     expect(f.alteracoes).toEqual([]);
     expect(f.carteira.alma).toBe(0);
+    expect(await outro.listarSkills(ficha.id)).toEqual([]);
   });
 
   it('exportar ficha inexistente', async () => {
@@ -115,6 +121,8 @@ describe('lerArquivo — validação', () => {
     ['item sem qtd', (a) => ((a.itens[1] as unknown as Record<string, unknown>).qtd = null), 'itens nº 2'],
     ['imagem que não é imagem', (a) => (a.imagens[0]!.dataUrl = 'javascript:alert(1)'), 'imagens nº 1'],
     ['imagem svg', (a) => (a.imagens[0]!.dataUrl = 'data:image/svg+xml;base64,PHN2Zz4='), 'imagens nº 1'],
+    ['skill sem nome', (a) => ((a.skills![0] as unknown as Record<string, unknown>).nome = 7), 'skills nº 1'],
+    ['skill de outra ficha', (a) => (a.skills![0]!.fichaId = 'outra'), 'skills nº 1'],
     ['journal sem texto', (a) => ((a.journal[0] as unknown as Record<string, unknown>).texto = 3), 'journal nº 1'],
     ['journal com imagem que não está no arquivo', (a) => (a.journal[0]!.imagens = ['sumiu']), 'journal nº 1'],
     ['journal com imagens que não é lista', (a) => ((a.journal[0] as unknown as Record<string, unknown>).imagens = 'img2'), 'journal nº 1'],

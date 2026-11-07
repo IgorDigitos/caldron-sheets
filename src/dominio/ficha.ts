@@ -47,6 +47,8 @@ export interface EntradaHistorico {
   efetivo: number;
   /** Em `dano`: quanto saiu do extra (temporário) antes de chegar no recurso. */
   doExtra?: number;
+  /** De onde veio (ex.: nome da skill usada). */
+  origem?: string;
   em: number;
 }
 
@@ -325,8 +327,10 @@ export function descreverEntrada(e: EntradaHistorico): string {
       return `+${num(e.valor)} descanso longo`;
     case 'extra':
       return `extra ${num(e.valor - e.efetivo)} → ${num(e.valor)}`;
-    case 'dano':
-      return `−${num(e.valor)} ${rotuloAcao(e.recurso, e.tipo)}${e.doExtra ? ` (${num(e.doExtra)} do extra)` : ''}`;
+    case 'dano': {
+      const detalhes = [e.origem, e.doExtra ? `${num(e.doExtra)} do extra` : ''].filter(Boolean).join(', ');
+      return `−${num(e.valor)} ${rotuloAcao(e.recurso, e.tipo)}${detalhes ? ` (${detalhes})` : ''}`;
+    }
     case 'cura':
       return `+${num(e.valor)} ${rotuloAcao(e.recurso, e.tipo)}`;
   }
