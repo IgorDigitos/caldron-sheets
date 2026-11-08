@@ -67,6 +67,12 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
   Vida máxima, arredondado, sem passar do máximo; enche STA e Mana).
 - **Extra (temporário)** por recurso em `ficha.extras` (campo manual no cartão do recurso): dano/gasto tira
   primeiro do extra, cura não recupera, descanso não mexe. `definirExtra`, `extraDe`.
+- **Descanso curto** (`src/dominio/descansoCurto.ts`, botão em `src/ui/DescansoCurto.tsx`): Vida 2dCON,
+  STA 3dCORPO, Mana 2dMENTE (valores atuais; tamanho do dado arredondado para o mais próximo, ,5 sobe;
+  recurso cheio fica de fora). **Quem rola é o bot**: o app manda uma rolagem por recurso para a `mesa`
+  ("2d5 Vida (descanso curto)") com o campo `descanso` e soma o total quando o resultado volta. O id da
+  rolagem vai no histórico (`rolagem`), então nunca soma duas vezes; resultado que chega com a tela fechada é
+  aplicado ao abrir a ficha (até 15 min). Sem nuvem/bot, o botão fica desligado.
 - Histórico de recursos (`TipoEntrada`): dano, cura, `descanso` (uma linha por recurso que subiu) e
   `extra` (de → para). Piso por recurso
   em `PISO`: Vida sem piso (pode ficar negativa), STA e Mana em 0. Histórico guarda as últimas 20.

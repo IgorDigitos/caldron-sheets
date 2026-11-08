@@ -1359,3 +1359,13 @@ button.aba.ativa {
   color: var(--accent);
   font-size: 1.125rem;
 }
+
+/* Descanso curto: botão + linha de estado (rola pelo bot da Mesa). */
+.descanso-curto {
+  display: grid;
+  gap: 0.25rem;
+}
+.descanso-curto .dica,
+.descanso-curto .erro {
+  margin: 0;
+}

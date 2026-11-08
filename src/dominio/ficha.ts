@@ -45,7 +45,7 @@ export const PISO: Record<Recurso, number> = {
 export type TipoMudanca = 'dano' | 'cura';
 
 /** No histórico, além de dano/cura: descanso longo e ajuste do extra (temporário). */
-export type TipoEntrada = TipoMudanca | 'descanso' | 'extra';
+export type TipoEntrada = TipoMudanca | 'descanso' | 'descansoCurto' | 'extra';
 
 export interface EntradaHistorico {
   id: string;
@@ -57,8 +57,10 @@ export interface EntradaHistorico {
   efetivo: number;
   /** Em `dano`: quanto saiu do extra (temporário) antes de chegar no recurso. */
   doExtra?: number;
-  /** De onde veio (ex.: nome da skill usada). */
+  /** De onde veio (ex.: nome da skill usada; no descanso curto, os dados: "2d5"). */
   origem?: string;
+  /** Descanso curto: id da rolagem do bot que gerou esta entrada (nunca aplica duas vezes). */
+  rolagem?: string;
   em: number;
 }
 
@@ -360,11 +362,16 @@ export function rotuloAcao(recurso: IdRecurso, tipo: TipoMudanca): string {
 
 const num = (n: number) => n.toLocaleString('pt-BR');
 
-/** Ex.: "−8 dano", "−8 dano (5 do extra)", "+5 cura", "−2 gasto", "+20 descanso longo", "extra 0 → 10". */
+/** Ex.: "−8 dano", "−8 dano (5 do extra)", "+5 cura", "−2 gasto", "+20 descanso longo", "+7 descanso curto (2d5)", "extra 0 → 10". */
 export function descreverEntrada(e: EntradaHistorico): string {
   switch (e.tipo) {
     case 'descanso':
       return `+${num(e.valor)} descanso longo`;
+    case 'descansoCurto': {
+      const rolou = e.efetivo !== e.valor ? `rolou ${num(e.valor)}` : '';
+      const detalhes = [e.origem, rolou].filter(Boolean).join(', ');
+      return `+${num(e.efetivo)} descanso curto${detalhes ? ` (${detalhes})` : ''}`;
+    }
     case 'extra':
       return `extra ${num(e.valor - e.efetivo)} → ${num(e.valor)}`;
     case 'dano': {

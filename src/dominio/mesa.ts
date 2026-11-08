@@ -4,6 +4,7 @@
 // grava o resultado e posta no Discord pelo webhook (canal da mesa ou canal do Mestre). O app nunca
 // sorteia nem envia resultado: só pede.
 
+import type { Recurso } from './ficha';
 import { novoId } from './id';
 
 /** `mesa`: todo mundo vê, vai para o canal da campanha. `mestre`: só o Mestre, canal secreto. */
@@ -22,6 +23,8 @@ export interface Mensagem {
   tipo: 'texto' | 'rolagem';
   /** Hora do aparelho que enviou. */
   criadoEm: number;
+  /** Rolagem de descanso curto: o resultado recupera este recurso da ficha `fichaId`. */
+  descanso?: Recurso;
   // ----- preenchido pelo bot (rolagens) -----
   estado?: EstadoRolagem;
   /** Resposta formatada do bot, a mesma que vai para o Discord (pode ter **negrito** e `código`). */
@@ -47,7 +50,7 @@ export function ehRolagem(texto: string): boolean {
 export class MensagemInvalida extends Error {}
 
 export function criarMensagem(
-  dados: { texto: string; autorUid: string; nome: string; fichaId?: string },
+  dados: { texto: string; autorUid: string; nome: string; fichaId?: string; descanso?: Recurso },
   agora: number = Date.now(),
 ): Mensagem {
   const texto = dados.texto.trim();
@@ -63,6 +66,7 @@ export function criarMensagem(
     tipo: rolagem ? 'rolagem' : 'texto',
     criadoEm: agora,
     ...(rolagem ? { estado: 'pendente' as const } : {}),
+    ...(rolagem && dados.descanso && dados.fichaId ? { descanso: dados.descanso } : {}),
   };
 }
 

@@ -114,7 +114,7 @@ export function App({ repo, mesa, sync, onLimparErroSync, usuario, onSair, aviso
         </div>
       )}
       {r.tela === 'lista' && <ListaFichas repo={repo} navegar={navegar} aviso={avisoLista} />}
-      {r.tela === 'ficha' && <FichaTela key={r.id} repo={repo} id={r.id} />}
+      {r.tela === 'ficha' && <FichaTela key={r.id} repo={repo} id={r.id} mesa={mesa} />}
       {r.tela === 'inventario' && <InventarioTela key={r.id} repo={repo} id={r.id} />}
       {r.tela === 'skills' && <SkillsTela key={r.id} repo={repo} id={r.id} />}
       {r.tela === 'journal' && <JournalTela key={r.id} repo={repo} id={r.id} />}
