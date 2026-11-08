@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { App } from '../app';
 import { RepositorioFirestore, type EstadoSync } from '../dados/firestore';
+import { MesaFirestore } from '../dados/mesaFirestore';
 import type { RepositorioFichas } from '../dados/repositorio';
 import {
   criarContaMestre,
@@ -91,11 +92,13 @@ function AreaJogador({ nuvem, usuario }: { nuvem: Nuvem; usuario: User }) {
   );
   const [sync, setSync] = useState<EstadoSync>({ pendentes: 0 });
   useEffect(() => repo.observar(setSync), [repo]);
+  const mesa = useMemo(() => new MesaFirestore(nuvem.db), [nuvem]);
   const sessao = useMemo<InfoSessao>(() => ({ papel: 'jogador', uid: usuario.uid, jogadores: [] }), [usuario.uid]);
 
   return (
     <App
       repo={repo}
+      mesa={mesa}
       sync={sync}
       sessao={sessao}
       onLimparErroSync={() => repo.limparErro()}
@@ -107,6 +110,7 @@ function AreaJogador({ nuvem, usuario }: { nuvem: Nuvem; usuario: User }) {
 
 function AreaMestre({ nuvem, usuario, repoLocal }: { nuvem: Nuvem; usuario: User; repoLocal?: RepositorioFichas }) {
   const repo = useMemo(() => new RepositorioFirestore(nuvem.db, mensagemSync), [nuvem]);
+  const mesa = useMemo(() => new MesaFirestore(nuvem.db), [nuvem]);
   const [sync, setSync] = useState<EstadoSync>({ pendentes: 0 });
   useEffect(() => repo.observar(setSync), [repo]);
 
@@ -133,6 +137,7 @@ function AreaMestre({ nuvem, usuario, repoLocal }: { nuvem: Nuvem; usuario: User
   return (
     <App
       repo={repo}
+      mesa={mesa}
       sync={sync}
       sessao={sessao}
       onLimparErroSync={() => repo.limparErro()}

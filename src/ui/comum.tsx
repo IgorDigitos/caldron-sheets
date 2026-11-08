@@ -3,13 +3,14 @@ import { atualizarParaRegrasAtuais, type Ficha } from '../dominio/ficha';
 import type { DefRecurso } from '../dominio/recursos';
 import type { RepositorioFichas } from '../dados/repositorio';
 
-export type Aba = 'ficha' | 'inventario' | 'skills' | 'journal';
+export type Aba = 'ficha' | 'inventario' | 'skills' | 'journal' | 'mesa';
 
 const ABAS: { id: Aba; nome: string; sufixo: string }[] = [
   { id: 'ficha', nome: 'Ficha', sufixo: '' },
   { id: 'inventario', nome: 'Inventário', sufixo: '/inventario' },
   { id: 'skills', nome: 'Skills', sufixo: '/skills' },
   { id: 'journal', nome: 'Journal', sufixo: '/journal' },
+  { id: 'mesa', nome: 'Mesa', sufixo: '/mesa' },
 ];
 
 export function rotaAba(fichaId: string, aba: Aba): string {

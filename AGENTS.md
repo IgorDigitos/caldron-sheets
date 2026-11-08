@@ -175,6 +175,24 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
   `VIDA/STA/MANA`, personalizados têm id `rec-…`.
 - Backup leva as definições usadas pela ficha; importar cria no catálogo as que faltam.
 
+## Mesa: chat e rolagens no Discord
+
+- Fluxo: app grava o pedido no Firestore → **bot Caldronis Dice** (repositório `C:\Caldronis Dice`, no PC
+  do Mestre) reserva numa transação, rola com o motor dele, grava o resultado e posta pelo **webhook** do
+  canal com o nome do personagem. O app **nunca** sorteia nem manda resultado; sem o bot ligado, nada rola.
+- `src/dominio/mesa.ts` — `Mensagem`, `ehRolagem` (mesma regra do `START` do bot: só rola se a mensagem
+  COMEÇAR com a expressão; "quero rolar d30" é texto), `criarMensagem`, rolagens rápidas (`d30+FOR`, ATK/MOD
+  da skill), `trechos` (Markdown do bot sem HTML).
+- Coleções `mesa` (campanha lê; jogador escreve como personagem dele, com o nome da ficha) e `mesaMestre`
+  (canal secreto, só o Mestre). Ninguém atualiza pelo app: resultado, erro e envio ao Discord são do bot
+  (Admin SDK). `recebidoEm` é a hora do servidor; o bot expira pedido que ficou na fila sem internet (>60s)
+  ou que esperou o bot desligado (>5min). Rolagem com o aparelho sem rede nem sai.
+- O bot lê os atributos ATUAIS da ficha (base + extra − perda, mais `NIVEL`); o pedido não leva valores.
+- `src/dados/mesa.ts` (`RepositorioMesa`, `MesaMemoria` com `responder` para simular o bot) e
+  `mesaFirestore.ts`. Rotas `#/mesa` e `#/ficha/<id>/mesa`. E2E usa o REST do emulador com `Bearer owner`
+  como bot falso.
+- Mudou o formato da mensagem? Mude junto `ponte/servico.py` no bot e as regras de `mesa`.
+
 ## Estrutura
 
 ```

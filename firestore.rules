@@ -205,6 +205,51 @@ service cloud.firestore {
           in ['data:image/webp;base64', 'data:image/jpeg;base64', 'data:image/png;base64'];
     }
 
+    // ---------- Mesa (chat + rolagens) ----------
+    // O app só PEDE a rolagem (estado 'pendente'). Quem rola é o bot Caldronis Dice, com a conta de
+    // serviço (Admin SDK, fora destas regras): ele preenche resultado, erro e envio ao Discord.
+    // Por isso ninguém atualiza mensagem pelo app.
+
+    function jogadorDaCampanha() {
+      return logado() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+
+    function mensagemValida(id) {
+      let d = request.resource.data;
+      return idConfere(id)
+        && d.keys().hasOnly(['id', 'autorUid', 'fichaId', 'nome', 'texto', 'tipo', 'criadoEm', 'estado', 'recebidoEm'])
+        && d.autorUid == request.auth.uid
+        && d.texto is string && d.texto.size() > 0 && d.texto.size() <= 1000
+        && d.nome is string && d.nome.size() > 0 && d.nome.size() <= 60
+        && d.criadoEm is number
+        // Hora do servidor: o bot não rola pedido que ficou parado na fila sem internet.
+        && d.recebidoEm == request.time
+        && ((d.tipo == 'texto' && !('estado' in d)) || (d.tipo == 'rolagem' && d.estado == 'pendente'));
+    }
+
+    /** Jogador fala/rola como um personagem DELE, com o nome que está na ficha. */
+    function falaComoPersonagem() {
+      let d = request.resource.data;
+      let ficha = get(/databases/$(database)/documents/personagens/$(d.fichaId)).data;
+      return 'fichaId' in d && d.fichaId is string
+        && ficha.get('donoUid', '') == request.auth.uid
+        && ficha.nome == d.nome;
+    }
+
+    match /mesa/{id} {
+      allow read: if ehMestre() || jogadorDaCampanha();
+      allow create: if logado() && mensagemValida(id) && (ehMestre() || (jogadorDaCampanha() && falaComoPersonagem()));
+      allow update: if false;
+      allow delete: if ehMestre();
+    }
+
+    // Canal do Mestre: rolagens secretas, vão para o canal do Discord que só o Mestre vê.
+    match /mesaMestre/{id} {
+      allow read, delete: if ehMestre();
+      allow create: if ehMestre() && mensagemValida(id);
+      allow update: if false;
+    }
+
     // Todo o resto: fechado.
     match /{document=**} {
       allow read, write: if false;

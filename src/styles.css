@@ -1235,3 +1235,127 @@ h2 {
   margin: 8px 0 0;
   font-size: 0.8125rem;
 }
+
+/* ---------- Mesa (chat + rolagens pelo bot) ---------- */
+
+.abas {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.abas.abas-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.aba {
+  font-size: 0.8125rem;
+  padding: 0 2px;
+}
+
+button.aba {
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button.aba.ativa {
+  background: var(--accent);
+}
+
+.dica {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 4px 0;
+}
+
+.form-mesa {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.linha-envio {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.linha-envio input {
+  min-height: 44px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #120d16;
+  color: var(--fg);
+  font: inherit;
+  font-size: 1rem;
+}
+
+.rolagens-rapidas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.rolagens-rapidas .btn {
+  width: auto;
+  min-height: 36px;
+  padding: 4px 8px;
+  font-size: 0.875rem;
+}
+
+.mensagens {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.mensagem {
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+
+.mensagem p {
+  margin: 0;
+}
+
+.mensagem-topo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+}
+
+.mensagem-topo time {
+  color: var(--muted);
+}
+
+.mensagem-topo .btn-icone {
+  margin-left: auto;
+}
+
+.mensagem-texto {
+  margin-top: 4px !important;
+}
+
+.resultado-rolagem {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+  background: #120d16;
+  border-radius: 6px;
+  white-space: pre-wrap;
+}
+
+.resultado-rolagem .total {
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 1.125rem;
+}
