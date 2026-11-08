@@ -217,7 +217,9 @@ service cloud.firestore {
     function mensagemValida(id) {
       let d = request.resource.data;
       return idConfere(id)
-        && d.keys().hasOnly(['id', 'autorUid', 'fichaId', 'nome', 'texto', 'tipo', 'criadoEm', 'estado', 'recebidoEm'])
+        && d.keys().hasOnly(['id', 'autorUid', 'fichaId', 'nome', 'texto', 'tipo', 'criadoEm', 'estado', 'recebidoEm', 'descanso'])
+        // Descanso curto: rolagem de um personagem que recupera Vida, Stamina ou Mana.
+        && (!('descanso' in d) || (d.tipo == 'rolagem' && 'fichaId' in d && d.descanso in ['VIDA', 'STA', 'MANA']))
         && d.autorUid == request.auth.uid
         && d.texto is string && d.texto.size() > 0 && d.texto.size() <= 1000
         && d.nome is string && d.nome.size() > 0 && d.nome.size() <= 60

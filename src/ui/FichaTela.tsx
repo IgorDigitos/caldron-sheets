@@ -18,6 +18,8 @@ import {
   type TipoMudanca,
 } from '../dominio/ficha';
 import type { RepositorioFichas } from '../dados/repositorio';
+import type { RepositorioMesa } from '../dados/mesa';
+import { DescansoCurto } from './DescansoCurto';
 import {
   ATRIBUTOS,
   FORMULAS_CALDRONIS,
@@ -48,9 +50,11 @@ const DERIVADOS_EXIBIDOS = (Object.keys(FORMULAS_CALDRONIS) as Derivado[]).filte
 interface Props {
   repo: RepositorioFichas;
   id: string;
+  /** Mesa da nuvem: o descanso curto rola pelo bot. */
+  mesa?: RepositorioMesa;
 }
 
-export function FichaTela({ repo, id }: Props) {
+export function FichaTela({ repo, id, mesa }: Props) {
   const [ficha, setFicha] = useFicha(repo, id);
   const { papel, jogadores } = useSessao();
   const ehMestre = papel === 'mestre';
@@ -169,6 +173,7 @@ export function FichaTela({ repo, id }: Props) {
         <button type="button" class="btn btn-secundario" onClick={() => void salvar(descansoLongo(ficha))}>
           Descanso longo
         </button>
+        <DescansoCurto ficha={ficha} mesa={mesa} salvar={salvar} />
       </div>
 
       <section class="atributos-visiveis" aria-label="Atributos">

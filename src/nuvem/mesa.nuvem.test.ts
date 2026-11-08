@@ -81,6 +81,16 @@ describe('mesa — jogador', () => {
     await assertFails(gravar(JOGADOR, 'mesa', semFicha));
   });
 
+  it('descanso curto: rolagem do personagem marcada com Vida, Stamina ou Mana', async () => {
+    await assertSucceeds(gravar(JOGADOR, 'mesa', pedido(JOGADOR, '2d5 Vida (descanso curto)', { descanso: 'VIDA' })));
+    await assertSucceeds(gravar(JOGADOR, 'mesa', pedido(JOGADOR, '2d2 Mana', { descanso: 'MANA' })));
+    await assertFails(gravar(JOGADOR, 'mesa', pedido(JOGADOR, '2d5', { descanso: 'OURO' as 'VIDA' })));
+    await assertFails(gravar(JOGADOR, 'mesa', { ...pedido(JOGADOR, 'oi'), descanso: 'VIDA' }));
+    const semFicha = pedido(MESTRE, '2d5', { descanso: 'VIDA' });
+    delete (semFicha as Partial<Mensagem>).fichaId;
+    await assertFails(gravar(MESTRE, 'mesa', semFicha));
+  });
+
   it('não inventa a hora do servidor nem passa do tamanho', async () => {
     await assertFails(gravar(JOGADOR, 'mesa', { ...pedido(JOGADOR, 'd30'), recebidoEm: 1 }));
     await assertFails(gravar(JOGADOR, 'mesa', { ...pedido(JOGADOR, 'x'), texto: 'x'.repeat(1001) }));
