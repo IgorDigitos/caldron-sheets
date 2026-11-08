@@ -147,6 +147,8 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
   `npx firebase deploy --only firestore:rules` à mão depois de mudar `firestore.rules`.
 - Publicar à mão: `npm run deploy`.
 - O app pede armazenamento persistente ao abrir (`src/plataforma/armazenamento.ts`).
+- O login é guardado por endereço: `caldron-sheets.firebaseapp.com` redireciona para o `web.app`
+  (`src/plataforma/endereco.ts`). Links de prévia não redirecionam e têm login próprio.
 
 ## Skills (Magias, Técnicas, Habilidades, Talentos)
 
