@@ -148,7 +148,7 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
 - Publicar à mão: `npm run deploy`.
 - O app pede armazenamento persistente ao abrir (`src/plataforma/armazenamento.ts`).
 
-## Skills (Magias, Técnicas, Habilidades)
+## Skills (Magias, Técnicas, Habilidades, Talentos)
 
 - `src/dominio/skills.ts` — colunas da planilha (nome, ATK/MOD, PAs, gastos em texto, descrição) mais
   `custos` estruturados (`{ recurso, valor }[]`, até 3), que o botão **Usar** desconta da ficha via

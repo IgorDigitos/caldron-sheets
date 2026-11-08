@@ -50,6 +50,7 @@ describe('skills — cadastro', () => {
       'Duro na Queda',
     ]);
     expect(daCategoria(lista, 'habilidade').map((s) => s.nome)).toEqual(['Caminho Digno']);
+    expect(daCategoria(lista, 'talento').map((s) => s.nome)).toEqual(['Dupla Empunhadura']);
     expect(daCategoria(lista, 'magia')).toEqual([]);
   });
 

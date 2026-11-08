@@ -63,4 +63,15 @@ export const SKAR_SKILLS: DadosSkill[] = [
       'Cada ato de coragem, disciplina, proteção e integridade fortalece sua ligação com ela. Da mesma forma, cada desvio desse caminho enfraquece sua presença.\n' +
       'A Dama não pede que você diga no que acredita. Ela espera que você prove.',
   },
+  {
+    categoria: 'talento',
+    nome: 'Dupla Empunhadura',
+    atkMod: '--',
+    pas: '1 PA',
+    gastos: '1 STA',
+    custos: [{ recurso: 'STA', valor: 1 }],
+    descricao:
+      'Uma vez por turno, após atacar com uma arma de uma mão, pode gastar 1 PA e 1 STA para atacar com outra arma de uma mão.\n' +
+      'O segundo ataque adiciona normalmente o atributo ao dano.',
+  },
 ];
