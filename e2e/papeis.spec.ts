@@ -39,7 +39,8 @@ test('Mestre cria o jogador e entrega a ficha; jogador joga e o servidor aceita'
   await expect(jog.getByRole('link', { name: 'Jogadores' })).toHaveCount(0);
 
   await jog.getByRole('link', { name: /Skar Lionet/ }).click();
-  await jog.getByText('Atributos', { exact: true }).click();
+  await expect(jog.getByText('Editar ficha')).toHaveCount(0);
+  await expect(jog.getByRole('region', { name: 'Atributos' }).getByTestId('atual-FOR')).toHaveText('8');
   await expect(jog.getByLabel('Força base')).toHaveCount(0);
   await expect(jog.getByLabel('Nível')).toHaveCount(0);
   await jog.getByLabel('Constituição extra').fill('2');

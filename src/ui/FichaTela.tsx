@@ -171,6 +171,70 @@ export function FichaTela({ repo, id }: Props) {
         </button>
       </div>
 
+      <section class="atributos-visiveis" aria-label="Atributos">
+        <h2>Atributos</h2>
+        {erros.length > 0 && (
+          <ul class="erro" role="alert">
+            {erros.map((e) => (
+              <li key={e.campo}>
+                {e.campo}: {e.mensagem}
+              </li>
+            ))}
+          </ul>
+        )}
+        <table class="atributos">
+          <thead>
+            <tr>
+              <th scope="col">Atributo</th>
+              <th scope="col">Base</th>
+              <th scope="col">Extra</th>
+              <th scope="col">Perda</th>
+              <th scope="col" class="col-atual">Atual</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ATRIBUTOS.map((a) => {
+              const v = ficha.atributos[a];
+              return (
+                <tr key={a}>
+                  <th scope="row">{NOMES_ATRIBUTOS[a]}</th>
+                  {(['base', 'extra', 'perda'] as const).map((campo) => (
+                    <td key={campo}>
+                      {campo === 'base' && !ehMestre ? (
+                        <span class="valor-fixo" data-testid={`base-${a}`}>
+                          {formatar(v.base)}
+                        </span>
+                      ) : (
+                        <CampoNumero
+                          rotulo={`${NOMES_ATRIBUTOS[a]} ${campo}`}
+                          oculto
+                          valor={v[campo] ?? 0}
+                          min={campo === 'base' ? undefined : 0}
+                          onMudar={(n) => mudar({ tipo: 'atributo', atributo: a, parte: campo }, n)}
+                        />
+                      )}
+                    </td>
+                  ))}
+                  <td class="celula-atual">
+                    <span
+                      class="valor-atual"
+                      data-testid={`atual-${a}`}
+                      data-mudou={valorAtual(v) !== v.base ? (valorAtual(v) > v.base ? 'subiu' : 'desceu') : undefined}
+                    >
+                      {formatar(valorAtual(v))}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {!ehMestre && (
+          <p class="vazio dica-atributos">Você pode mudar o extra e a perda. A base, o nível e o nome são do Mestre.</p>
+        )}
+      </section>
+
+
       <section class="historico" aria-label="Histórico">
         <h2>Histórico</h2>
         {ficha.historico.length === 0 ? (
@@ -229,10 +293,10 @@ export function FichaTela({ repo, id }: Props) {
         </dl>
       </section>
 
-      <details class="editar">
-        <summary>{ehMestre ? 'Editar ficha' : 'Atributos'}</summary>
+      {ehMestre && (
+        <details class="editar">
+          <summary>Editar ficha</summary>
 
-        {ehMestre ? (
           <div class="campos-texto">
             <CampoTexto rotulo="Nome" valor={ficha.nome} onMudar={(v) => mudarTexto('nome', v)} />
             <CampoTexto rotulo="Raça" valor={ficha.raca} onMudar={(v) => mudarTexto('raca', v)} />
@@ -250,69 +314,17 @@ export function FichaTela({ repo, id }: Props) {
               </select>
             </label>
           </div>
-        ) : (
-          <p class="vazio">Você pode mudar o extra e a perda. A base, o nível e o nome são do Mestre.</p>
-        )}
 
-        {ehMestre && defs.length > 0 && (
-          <RecursosEspeciais
-            ficha={ficha}
-            defs={defs}
-            onMudar={(nova) => void salvar(nova)}
-            onErro={(m) => setErroSalvar(m)}
-          />
-        )}
-
-        {erros.length > 0 && (
-          <ul class="erro" role="alert">
-            {erros.map((e) => (
-              <li key={e.campo}>
-                {e.campo}: {e.mensagem}
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <table class="atributos">
-          <thead>
-            <tr>
-              <th scope="col">Atributo</th>
-              <th scope="col">Base</th>
-              <th scope="col">Extra</th>
-              <th scope="col">Perda</th>
-              <th scope="col">Atual</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ATRIBUTOS.map((a) => {
-              const v = ficha.atributos[a];
-              return (
-                <tr key={a}>
-                  <th scope="row">{NOMES_ATRIBUTOS[a]}</th>
-                  {(['base', 'extra', 'perda'] as const).map((campo) => (
-                    <td key={campo}>
-                      {campo === 'base' && !ehMestre ? (
-                        <span class="valor-fixo" data-testid={`base-${a}`}>
-                          {formatar(v.base)}
-                        </span>
-                      ) : (
-                        <CampoNumero
-                          rotulo={`${NOMES_ATRIBUTOS[a]} ${campo}`}
-                          oculto
-                          valor={v[campo] ?? 0}
-                          min={campo === 'base' ? undefined : 0}
-                          onMudar={(n) => mudar({ tipo: 'atributo', atributo: a, parte: campo }, n)}
-                        />
-                      )}
-                    </td>
-                  ))}
-                  <td data-testid={`atual-${a}`}>{formatar(valorAtual(v))}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </details>
+          {defs.length > 0 && (
+            <RecursosEspeciais
+              ficha={ficha}
+              defs={defs}
+              onMudar={(nova) => void salvar(nova)}
+              onErro={(m) => setErroSalvar(m)}
+            />
+          )}
+        </details>
+      )}
 
       <section class="backup" aria-label="Backup">
         <h2>Backup</h2>

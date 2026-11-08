@@ -63,7 +63,8 @@ describe('ficha', () => {
     const { repo, ficha } = await fichaDoThainan();
     render(com(JOGADOR, <FichaTela repo={repo} id={ficha.id} />));
     await screen.findByRole('heading', { name: 'Skar Lionet' });
-    expect(screen.getByText('Atributos')).toBeTruthy(); // título do bloco para o jogador
+    expect(screen.getByRole('region', { name: 'Atributos' })).toBeTruthy();
+    expect(screen.queryByText('Editar ficha')).toBeNull();
     for (const rotulo of ['Nome', 'Raça', 'Classe', 'Nível', 'Jogador', 'Força base']) {
       expect(screen.queryByLabelText(rotulo)).toBeNull();
     }
@@ -96,6 +97,37 @@ describe('ficha', () => {
     await waitFor(async () => expect((await repo.obter(ficha.id))!.donoUid).toBe(THAINAN.uid));
     fireEvent.change(dono, { target: { value: '' } });
     await waitFor(async () => expect('donoUid' in (await repo.obter(ficha.id))!).toBe(false));
+  });
+});
+
+describe('atributos sempre visíveis', () => {
+  it('a tabela aparece sem abrir nada, com o Atual em destaque e a cor da mudança', async () => {
+    const { repo, ficha } = await fichaDoThainan();
+    render(com(JOGADOR, <FichaTela repo={repo} id={ficha.id} />));
+    await screen.findByRole('heading', { name: 'Skar Lionet' });
+    const secao = screen.getByRole('region', { name: 'Atributos' });
+    expect(secao.closest('details')).toBeNull();
+    const forca = within(secao).getByTestId('atual-FOR');
+    expect(forca.textContent).toBe('8');
+    expect(forca.dataset.mudou).toBeUndefined();
+
+    fireEvent.change(within(secao).getByLabelText('Constituição extra'), { target: { value: '2' } });
+    expect(within(secao).getByTestId('atual-CON').dataset.mudou).toBe('subiu');
+    fireEvent.change(within(secao).getByLabelText('Força perda'), { target: { value: '1' } });
+    expect(within(secao).getByTestId('atual-FOR').textContent).toBe('7');
+    expect(within(secao).getByTestId('atual-FOR').dataset.mudou).toBe('desceu');
+  });
+
+  it('Mestre vê a tabela fora do "Editar ficha" e edita a base nela', async () => {
+    const { repo, ficha } = await fichaDoThainan();
+    render(com(MESTRE, <FichaTela repo={repo} id={ficha.id} />));
+    await screen.findByRole('heading', { name: 'Skar Lionet' });
+    const secao = screen.getByRole('region', { name: 'Atributos' });
+    expect(secao.closest('details')).toBeNull();
+    fireEvent.change(within(secao).getByLabelText('Força base'), { target: { value: '10' } });
+    expect(within(secao).getByTestId('atual-FOR').textContent).toBe('10');
+    expect(screen.getByText('Editar ficha').closest('details')).toBeTruthy();
+    await waitFor(async () => expect((await repo.obter(ficha.id))!.atributos.FOR.base).toBe(10));
   });
 });
 

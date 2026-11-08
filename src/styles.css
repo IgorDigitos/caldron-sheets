@@ -1189,3 +1189,49 @@ h2 {
 .recursos-catalogo code {
   color: var(--accent);
 }
+
+/* Atributos sempre visíveis, com o valor atual em destaque */
+.atributos-visiveis {
+  margin-top: 24px;
+}
+
+.atributos .col-atual {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.celula-atual {
+  padding-left: 6px;
+}
+
+.valor-atual {
+  display: inline-grid;
+  place-items: center;
+  min-width: 48px;
+  min-height: 40px;
+  padding: 0 8px;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: rgba(217, 164, 65, 0.14);
+  color: var(--accent);
+  font-size: 1.375rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.valor-atual[data-mudou='subiu'] {
+  border-color: var(--ok);
+  background: rgba(79, 157, 105, 0.16);
+  color: #b4e2c2;
+}
+
+.valor-atual[data-mudou='desceu'] {
+  border-color: var(--danger);
+  background: rgba(196, 82, 74, 0.16);
+  color: #f3b2ac;
+}
+
+.dica-atributos {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+}
