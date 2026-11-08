@@ -30,7 +30,7 @@ async function montar(sessao: InfoSessao, ajustar = (f: ReturnType<typeof criarF
 }
 
 describe('SkillsTela', () => {
-  it('mostra as três categorias com as skills do Skar', async () => {
+  it('mostra as quatro categorias com as skills do Skar', async () => {
     await montar(JOGADOR);
     const tecnicas = screen.getByRole('region', { name: 'Técnicas' });
     expect(within(tecnicas).getAllByRole('article').map((a) => a.getAttribute('aria-label'))).toEqual([
@@ -40,6 +40,15 @@ describe('SkillsTela', () => {
       'Duro na Queda',
     ]);
     expect(within(screen.getByRole('region', { name: 'Magias' })).getByText('Nenhuma.')).toBeTruthy();
+    const talentos = screen.getByRole('region', { name: 'Talentos' });
+    const dupla = within(talentos).getByRole('article', { name: 'Dupla Empunhadura' });
+    expect(within(dupla).getByRole('button', { name: 'Usar (−1 Stamina)' })).toBeTruthy();
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
+      'Magias',
+      'Técnicas',
+      'Habilidades',
+      'Talentos',
+    ]);
     const punhos = within(tecnicas).getByRole('article', { name: 'Punhos de Pedra' });
     expect(within(punhos).getByText('2d4+FOR')).toBeTruthy();
     expect(within(punhos).queryByRole('button', { name: /Usar/ })).toBeNull(); // passiva, sem custo
@@ -100,6 +109,18 @@ describe('SkillsTela', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Excluir' }));
     await waitFor(() => expect(screen.queryByRole('article', { name: 'Duro na Queda' })).toBeNull());
     expect((await repo.listarSkills(ficha.id)).map((s) => s.nome)).not.toContain('Duro na Queda');
+  });
+
+  it('Mestre cria um talento', async () => {
+    const { repo, ficha } = await montar(MESTRE);
+    fireEvent.click(screen.getByRole('button', { name: '+ Talento' }));
+    const form = screen.getByRole('form', { name: 'Nova skill' });
+    expect((within(form).getByLabelText('Tipo') as HTMLSelectElement).value).toBe('talento');
+    fireEvent.input(within(form).getByLabelText('Nome'), { target: { value: 'Olhar Atento' } });
+    fireEvent.click(within(form).getByRole('button', { name: 'Salvar skill' }));
+    const talentos = await screen.findByRole('region', { name: 'Talentos' });
+    await waitFor(() => expect(within(talentos).getByRole('article', { name: 'Olhar Atento' })).toBeTruthy());
+    expect((await repo.listarSkills(ficha.id)).find((s) => s.nome === 'Olhar Atento')!.categoria).toBe('talento');
   });
 
   it('Mestre: nome vazio mostra erro; cancelar volta', async () => {

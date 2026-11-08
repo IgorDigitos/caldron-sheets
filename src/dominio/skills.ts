@@ -1,22 +1,24 @@
-// Skills de uma ficha: Magias, Técnicas e Habilidades (mesmas colunas da planilha do Skar).
+// Skills de uma ficha: Magias, Técnicas, Habilidades e Talentos (mesmas colunas da planilha do Skar).
 // Só o Mestre cria e edita; o jogador só lê (garantido em firestore.rules).
 
 import { aplicar, atualDe, ehBasico, extraDe, NOMES_RECURSOS, temRecurso, type Ficha, type IdRecurso } from './ficha';
 import { novoId } from './id';
 
-export const CATEGORIAS_SKILL = ['magia', 'tecnica', 'habilidade'] as const;
+export const CATEGORIAS_SKILL = ['magia', 'tecnica', 'habilidade', 'talento'] as const;
 export type CategoriaSkill = (typeof CATEGORIAS_SKILL)[number];
 
 export const NOMES_CATEGORIAS: Record<CategoriaSkill, string> = {
   magia: 'Magias',
   tecnica: 'Técnicas',
   habilidade: 'Habilidades',
+  talento: 'Talentos',
 };
 
 export const NOME_SINGULAR: Record<CategoriaSkill, string> = {
   magia: 'Magia',
   tecnica: 'Técnica',
   habilidade: 'Habilidade',
+  talento: 'Talento',
 };
 
 export interface Skill {
