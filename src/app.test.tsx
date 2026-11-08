@@ -47,6 +47,8 @@ describe('App', () => {
     ['/ficha/abc-1', { tela: 'ficha', id: 'abc-1' }],
     ['/ficha/abc-1/inventario', { tela: 'inventario', id: 'abc-1' }],
     ['/ficha/abc-1/journal', { tela: 'journal', id: 'abc-1' }],
+    ['/ficha/abc-1/mesa', { tela: 'mesa', id: 'abc-1' }],
+    ['/mesa', { tela: 'mesa-geral' }],
     ['/ficha/abc-1/outra', { tela: 'lista' }],
     ['/qualquer', { tela: 'lista' }],
   ])('rota %s', (rota, esperado) => {

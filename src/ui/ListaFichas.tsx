@@ -114,6 +114,10 @@ export function ListaFichas({ repo, navegar, aviso }: Props) {
         </ul>
       )}
 
+      <a href="#/mesa" class="btn btn-secundario botao-arquivo largo">
+        Mesa: chat e dados
+      </a>
+
       {ehMestre && (
         <div class="acoes-lista">
           <button type="button" class="btn btn-primario" onClick={() => void criar({ nome: 'Novo personagem' })}>
