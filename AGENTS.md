@@ -94,6 +94,9 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
   1.000.000; **Moeda d'Alma** é contador à parte, fora do total). Sem limite de carga (decisão do Mestre).
   Toda mudança de moeda passa por `movimentarMoeda`, que registra de → para em `carteira.historico`
   (últimas 30).
+- **Status da ficha** mostra em destaque (`dl.destaque`, primeiro) Def. Física e Def. Mágica **totais**
+  (`defesaTotal` = natural + itens equipados, o mesmo número da aba Inventário), PA, Deslocamento e
+  Contrabalanço; Corpo, Mente e as defesas naturais vêm depois. A FichaTela carrega os itens só para isso.
 - `src/dominio/journal.ts` — entradas com data AAAA-MM-DD, título, texto, sessão opcional e até 6
   imagens (`imagens`: ids na tabela `imagens`, mesma compressão das fotos de item).
 - Foto de item: só galeria/arquivo (sem botão de câmera, decisão do Mestre).

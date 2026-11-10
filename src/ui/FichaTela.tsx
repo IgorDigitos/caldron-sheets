@@ -20,6 +20,7 @@ import {
 import type { RepositorioFichas } from '../dados/repositorio';
 import type { RepositorioMesa } from '../dados/mesa';
 import { DescansoCurto } from './DescansoCurto';
+import { defesaTotal, type Item } from '../dominio/inventario';
 import {
   ATRIBUTOS,
   FORMULAS_CALDRONIS,
@@ -43,8 +44,11 @@ import {
 } from '../dominio/recursos';
 
 const HISTORICO_VISIVEL = 6;
+// Status em destaque: o que o Mestre consulta em combate. Def. Física/Mágica são as TOTAIS
+// (natural + itens equipados), as mesmas da aba Inventário.
+const DESTAQUE: Derivado[] = ['PA', 'DESLOCAMENTO', 'CONTRABALANCO'];
 const DERIVADOS_EXIBIDOS = (Object.keys(FORMULAS_CALDRONIS) as Derivado[]).filter(
-  (d) => !(RECURSOS as readonly string[]).includes(d),
+  (d) => !(RECURSOS as readonly string[]).includes(d) && !DESTAQUE.includes(d),
 );
 
 interface Props {
@@ -62,6 +66,16 @@ export function FichaTela({ repo, id, mesa }: Props) {
   const [erroSalvar, setErroSalvar] = useState('');
   const [verTodas, setVerTodas] = useState(false);
   const defs = useCatalogo(repo);
+  const [itens, setItens] = useState<Item[]>([]);
+
+  // Itens equipados entram na defesa total do Status.
+  useEffect(() => {
+    let vivo = true;
+    repo.listarItens(id).then((l) => vivo && setItens(l)).catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, [repo, id]);
 
   // Só o app do Mestre calcula o máximo dos recursos personalizados (o servidor não confere fórmula
   // livre). Ao abrir a ficha ou mudar nível/atributo, recalcula e salva se mudou.
@@ -76,6 +90,8 @@ export function FichaTela({ repo, id, mesa }: Props) {
 
   if (ficha === undefined) return <p class="carregando">Carregando…</p>;
   if (ficha === null) return <NaoEncontrada />;
+
+  const defesa = defesaTotal(ficha.maximos, itens);
 
   const salvar = async (nova: Ficha) => {
     setFicha(nova);
@@ -288,6 +304,24 @@ export function FichaTela({ repo, id, mesa }: Props) {
 
       <section class="derivados" aria-label="Valores calculados">
         <h2>Status</h2>
+        <dl class="destaque" aria-label="Em combate">
+          <div>
+            <dt>Def. Física</dt>
+            <dd data-testid="derivado-DEF_FISICA">{formatar(defesa.fisica)}</dd>
+            {defesa.itens.fisica > 0 && <small>natural {formatar(ficha.maximos.DEF_NATURAL)} + itens {formatar(defesa.itens.fisica)}</small>}
+          </div>
+          <div>
+            <dt>Def. Mágica</dt>
+            <dd data-testid="derivado-DEF_MAGICA">{formatar(defesa.magica)}</dd>
+            {defesa.itens.magica > 0 && <small>natural {formatar(ficha.maximos.DEF_MAGICA_NATURAL)} + itens {formatar(defesa.itens.magica)}</small>}
+          </div>
+          {DESTAQUE.map((d) => (
+            <div key={d}>
+              <dt>{NOMES_DERIVADOS[d]}</dt>
+              <dd data-testid={`derivado-${d}`}>{formatar(ficha.maximos[d])}</dd>
+            </div>
+          ))}
+        </dl>
         <dl>
           {DERIVADOS_EXIBIDOS.map((d) => (
             <div key={d}>

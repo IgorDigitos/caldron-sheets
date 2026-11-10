@@ -3,6 +3,7 @@ import {
   carteiraVazia,
   criarItem,
   defesaItens,
+  defesaTotal,
   definirMoeda,
   descreverMovimento,
   editarItem,
@@ -79,6 +80,16 @@ describe('defesa dos itens', () => {
 
   it('sem itens é zero', () => {
     expect(defesaItens([])).toEqual({ fisica: 0, magica: 0 });
+  });
+
+  it('defesaTotal: natural da ficha + itens equipados', () => {
+    const maximos = { DEF_NATURAL: 7.5, DEF_MAGICA_NATURAL: 23 / 6 };
+    expect(defesaTotal(maximos, [armadura, escudo, amuletos])).toEqual({
+      fisica: 11.5,
+      magica: 23 / 6 + 2,
+      itens: { fisica: 4, magica: 2 },
+    });
+    expect(defesaTotal(maximos, []).fisica).toBe(7.5);
   });
 
   it('temDefesa', () => {

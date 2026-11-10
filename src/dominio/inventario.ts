@@ -88,6 +88,19 @@ export function defesaItens(itens: readonly Item[]): { fisica: number; magica: n
   return { fisica, magica };
 }
 
+/** Defesa total = natural (da ficha) + itens equipados. É o número que vale em combate. */
+export function defesaTotal(
+  maximos: { DEF_NATURAL: number; DEF_MAGICA_NATURAL: number },
+  itens: readonly Item[],
+): { fisica: number; magica: number; itens: { fisica: number; magica: number } } {
+  const bonus = defesaItens(itens);
+  return {
+    fisica: maximos.DEF_NATURAL + bonus.fisica,
+    magica: maximos.DEF_MAGICA_NATURAL + bonus.magica,
+    itens: bonus,
+  };
+}
+
 /** Ordena para a lista: equipados primeiro, depois por nome. */
 export function ordenarItens(itens: readonly Item[]): Item[] {
   return [...itens].sort(

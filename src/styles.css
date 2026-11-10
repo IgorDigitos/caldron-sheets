@@ -330,6 +330,25 @@ h2 {
   margin: 0;
 }
 
+/* Status em destaque (defesas totais, PA, deslocamento, contrabalanço): o que se olha em combate. */
+.derivados dl.destaque {
+  margin-bottom: 12px;
+}
+
+.derivados dl.destaque div {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.derivados dl.destaque dt {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.derivados dl.destaque dd {
+  font-size: 1.5rem;
+}
+
 .derivados dl div {
   padding: 8px 12px;
   background: var(--surface);
