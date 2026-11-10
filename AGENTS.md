@@ -153,6 +153,8 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
   `npx firebase deploy --only firestore:rules` à mão depois de mudar `firestore.rules`.
 - Publicar à mão: `npm run deploy`.
 - O app pede armazenamento persistente ao abrir (`src/plataforma/armazenamento.ts`).
+- App instalado fica dias aberto: ao **voltar** para ele (no máximo 1x por minuto) o app procura versão nova do
+  service worker (`src/plataforma/atualizacao.ts`); achou, recarrega na versão nova (`autoUpdate`).
 - O login é guardado por endereço: `caldron-sheets.firebaseapp.com` redireciona para o `web.app`
   (`src/plataforma/endereco.ts`). Links de prévia não redirecionam e têm login próprio.
 

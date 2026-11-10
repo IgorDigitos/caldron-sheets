@@ -4,6 +4,7 @@ import { RepositorioDexie } from './dados/dexie';
 import { USAR_EMULADOR } from './nuvem/config';
 import { iniciarNuvem } from './nuvem/firebase';
 import { pedirArmazenamentoPersistente } from './plataforma/armazenamento';
+import { procurarAtualizacaoAoVoltar } from './plataforma/atualizacao';
 import { redirecionamento } from './plataforma/endereco';
 import { Sessao } from './ui/Sessao';
 import './styles.css';
@@ -13,7 +14,13 @@ const destino = redirecionamento(location.href);
 if (destino) {
   location.replace(destino);
 } else {
-  registerSW({ immediate: true });
+  registerSW({
+    immediate: true,
+    // App instalado fica dias aberto: procura versão nova toda vez que a pessoa volta para ele.
+    onRegisteredSW: (_url, registro) => {
+      if (registro) procurarAtualizacaoAoVoltar(registro);
+    },
+  });
   void pedirArmazenamentoPersistente();
 
   const nuvem = iniciarNuvem({ emulador: USAR_EMULADOR, persistente: true });
