@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import {
-  defesaItens,
+  defesaTotal,
   descreverMovimento,
   mudarQtd,
   movimentarMoeda,
@@ -76,9 +76,7 @@ export function InventarioTela({ repo, id, prepararImagem }: Props) {
 
   const historicoCarteira = ficha.carteira.historico ?? [];
 
-  const bonus = defesaItens(itens);
-  const defF = ficha.maximos.DEF_NATURAL + bonus.fisica;
-  const defM = ficha.maximos.DEF_MAGICA_NATURAL + bonus.magica;
+  const defesa = defesaTotal(ficha.maximos, itens);
 
   if (editando) {
     return (
@@ -119,16 +117,16 @@ export function InventarioTela({ repo, id, prepararImagem }: Props) {
         <dl>
           <div>
             <dt>Def. Física</dt>
-            <dd data-testid="def-fisica">{formatar(defF)}</dd>
+            <dd data-testid="def-fisica">{formatar(defesa.fisica)}</dd>
             <small>
-              natural {formatar(ficha.maximos.DEF_NATURAL)} + itens {formatar(bonus.fisica)}
+              natural {formatar(ficha.maximos.DEF_NATURAL)} + itens {formatar(defesa.itens.fisica)}
             </small>
           </div>
           <div>
             <dt>Def. Mágica</dt>
-            <dd data-testid="def-magica">{formatar(defM)}</dd>
+            <dd data-testid="def-magica">{formatar(defesa.magica)}</dd>
             <small>
-              natural {formatar(ficha.maximos.DEF_MAGICA_NATURAL)} + itens {formatar(bonus.magica)}
+              natural {formatar(ficha.maximos.DEF_MAGICA_NATURAL)} + itens {formatar(defesa.itens.magica)}
             </small>
           </div>
         </dl>

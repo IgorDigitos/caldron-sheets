@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/pre
 import { FichaTela } from './FichaTela';
 import { RepositorioMemoria } from '../dados/memoria';
 import { criarFicha } from '../dominio/ficha';
+import { criarItem } from '../dominio/inventario';
 import { SKAR } from '../rules/fixtures/skar';
 import type { RepositorioFichas } from '../dados/repositorio';
 
@@ -30,6 +31,42 @@ describe('FichaTela', () => {
     expect(screen.getByTestId('derivado-CORPO').textContent).toBe('5');
     expect(screen.getByTestId('derivado-MENTE').textContent).toBe('2,3');
     expect(screen.getByTestId('derivado-DESLOCAMENTO').textContent).toBe('9');
+  });
+
+  it('Status: defesas totais, PA, deslocamento e contrabalanço em destaque, antes dos outros', async () => {
+    const repo = new RepositorioMemoria();
+    const ficha = criarFicha({ nome: 'Skar Lionet', raca: 'Humano', classe: 'Pugilista', ...SKAR });
+    await repo.salvar(ficha);
+    await repo.salvarItem(criarItem(ficha.id, { nome: 'Couro', defF: 2, defM: 0.5, equipado: true }));
+    await repo.salvarItem(criarItem(ficha.id, { nome: 'Escudo na mochila', defF: 3, equipado: false }));
+    render(<FichaTela repo={repo} id={ficha.id} />);
+    await screen.findByRole('heading', { name: 'Skar Lionet' });
+
+    const destaque = screen.getByLabelText('Em combate');
+    await waitFor(() => expect(within(destaque).getByTestId('derivado-DEF_FISICA').textContent).toBe('9,5'));
+    expect(within(destaque).getByTestId('derivado-DEF_MAGICA').textContent).toBe('4,3');
+    expect(within(destaque).getByText('natural 7,5 + itens 2')).toBeTruthy();
+    expect(within(destaque).getAllByRole('term').map((t) => t.textContent)).toEqual([
+      'Def. Física',
+      'Def. Mágica',
+      'PA',
+      'Deslocamento',
+      'Contrabalanço',
+    ]);
+    // O grupo em destaque vem antes de Corpo/Mente/naturais, que continuam na lista comum.
+    const status = screen.getByRole('region', { name: 'Valores calculados' });
+    const termos = within(status).getAllByRole('term').map((t) => t.textContent);
+    expect(termos.indexOf('Def. Física')).toBeLessThan(termos.indexOf('Corpo'));
+    expect(termos).toContain('Def. Natural');
+    expect(termos).toContain('Def. Mágica Natural');
+    expect(termos.filter((t) => t === 'PA')).toHaveLength(1);
+  });
+
+  it('Status sem itens: defesa total = natural, sem a linha de itens', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('derivado-DEF_FISICA').textContent).toBe('7,5'));
+    expect(screen.getByTestId('derivado-DEF_MAGICA').textContent).toBe('3,8');
+    expect(screen.queryByText(/natural .* \+ itens/)).toBeNull();
   });
 
   it('dano atualiza a tela, o histórico e salva', async () => {
