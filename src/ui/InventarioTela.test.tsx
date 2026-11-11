@@ -40,6 +40,22 @@ function preencher(rotulo: string, valor: string) {
 }
 
 describe('InventarioTela', () => {
+  it('carteira mostra o valor de cada moeda em Caldris ao lado do nome', async () => {
+    await montar();
+    const carteira = screen.getByRole('region', { name: 'Carteira' });
+    const rotulos = within(carteira).getAllByText(/·/).map((e) => e.parentElement!.textContent!.replace(/\s+/g, ' ').trim());
+    expect(rotulos).toEqual([
+      'Ferro · 0,1',
+      'Cobre · 1',
+      'Bronze · 10',
+      'Prata · 100',
+      'Ouro · 1.000',
+      'Platina · 10.000',
+      'Electrum · 100.000',
+      'Oricalco · 1.000.000',
+    ]);
+  });
+
   it('vazio mostra aviso, defesa natural e carteira zerada', async () => {
     await montar();
     expect(screen.getByText('Inventário vazio.')).toBeTruthy();
@@ -152,8 +168,8 @@ describe('InventarioTela', () => {
   it('carteira calcula o total e guarda Moeda d\'Alma à parte', async () => {
     const { repo, ficha } = await montar();
     const carteira = screen.getByRole('region', { name: 'Carteira' });
-    fireEvent.change(within(carteira).getByLabelText('Ouro'), { target: { value: '2' } });
-    fireEvent.change(within(carteira).getByLabelText('Bronze'), { target: { value: '9' } });
+    fireEvent.change(within(carteira).getByLabelText(/^Ouro\b/), { target: { value: '2' } });
+    fireEvent.change(within(carteira).getByLabelText(/^Bronzeb/), { target: { value: '9' } });
     fireEvent.change(within(carteira).getByLabelText("Moeda d'Alma"), { target: { value: '3' } });
     expect(screen.getByTestId('total-carteira').textContent).toBe('2.090');
     expect(screen.getByTestId('total-alma').textContent).toBe("+ 3 Moedas d'Alma");
@@ -166,10 +182,10 @@ describe('InventarioTela', () => {
     const hist = () => within(screen.getByRole('region', { name: 'Histórico da carteira' }));
     expect(hist().getByText('Nenhuma movimentação ainda.')).toBeTruthy();
 
-    fireEvent.change(within(carteira).getByLabelText('Ouro'), { target: { value: '5' } });
-    fireEvent.change(within(carteira).getByLabelText('Ouro'), { target: { value: '3' } });
+    fireEvent.change(within(carteira).getByLabelText(/^Ouro\b/), { target: { value: '5' } });
+    fireEvent.change(within(carteira).getByLabelText(/^Ouro\b/), { target: { value: '3' } });
     fireEvent.change(within(carteira).getByLabelText("Moeda d'Alma"), { target: { value: '1' } });
-    fireEvent.change(within(carteira).getByLabelText('Prata'), { target: { value: '0' } }); // sem mudança
+    fireEvent.change(within(carteira).getByLabelText(/^Prata\b/), { target: { value: '0' } }); // sem mudança
 
     const linhas = hist().getAllByRole('listitem');
     expect(linhas.map((l) => l.firstElementChild!.textContent)).toEqual(["+1 Moeda d'Alma", '−2 Ouro', '+5 Ouro']);
@@ -181,7 +197,7 @@ describe('InventarioTela', () => {
 
   it('histórico da carteira mostra 6 e permite ver todas', async () => {
     await montar();
-    const ouro = within(screen.getByRole('region', { name: 'Carteira' })).getByLabelText('Ouro');
+    const ouro = within(screen.getByRole('region', { name: 'Carteira' })).getByLabelText(/^Ouro\b/);
     for (let i = 1; i <= 8; i++) fireEvent.change(ouro, { target: { value: String(i) } });
     const hist = within(screen.getByRole('region', { name: 'Histórico da carteira' }));
     expect(hist.getAllByRole('listitem')).toHaveLength(6);
@@ -204,7 +220,7 @@ describe('InventarioTela', () => {
 
   it('moeda inválida é desfeita com aviso', async () => {
     await montar();
-    const ouro = within(screen.getByRole('region', { name: 'Carteira' })).getByLabelText('Ouro') as HTMLInputElement;
+    const ouro = within(screen.getByRole('region', { name: 'Carteira' })).getByLabelText(/^Ouro\b/) as HTMLInputElement;
     fireEvent.change(ouro, { target: { value: '1.5' } });
     expect(ouro.value).toBe('0');
     expect(screen.getByRole('alert').textContent).toContain('inteira');

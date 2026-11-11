@@ -207,7 +207,9 @@ export function InventarioTela({ repo, id, prepararImagem }: Props) {
         <div class="moedas">
           {MOEDAS.map((m) => (
             <label key={m.id} class="campo">
-              <span>{m.nome}</span>
+              <span>
+                {m.nome} <small class="valor-moeda">· {m.valor.toLocaleString('pt-BR')}</small>
+              </span>
               <Entrada
                 type="number"
                 inputMode="numeric"

@@ -1543,3 +1543,10 @@ button.aba.ativa {
   margin: 0;
   font-size: 0.8125rem;
 }
+
+/* Valor de cada moeda em Caldris, ao lado do nome (Ferro · 0,1 … Oricalco · 1.000.000). */
+.valor-moeda {
+  color: var(--muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
