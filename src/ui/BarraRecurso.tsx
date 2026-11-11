@@ -17,6 +17,8 @@ interface Props {
   onAplicar: (tipo: TipoMudanca, valor: number) => void;
   /** Ajuste manual do extra. Sem isto, o campo não aparece. */
   onExtra?: (valor: number) => void;
+  /** Prefixo do id do campo, quando há vários cartões do mesmo recurso na página (board). */
+  idPrefixo?: string;
 }
 
 const BOTOES: Record<Recurso, Record<TipoMudanca, string>> = {
@@ -25,14 +27,14 @@ const BOTOES: Record<Recurso, Record<TipoMudanca, string>> = {
   MANA: { dano: 'Gastar', cura: 'Recuperar' },
 };
 
-export function BarraRecurso({ recurso, nome: nomeDado, cor, atual, max, extra = 0, onAplicar, onExtra }: Props) {
+export function BarraRecurso({ recurso, nome: nomeDado, cor, atual, max, extra = 0, onAplicar, onExtra, idPrefixo = 'qtd' }: Props) {
   const [texto, setTexto] = useState('');
   const [erro, setErro] = useState('');
   const nome = nomeDado ?? (ehBasico(recurso) ? NOMES_RECURSOS[recurso] : 'Recurso');
   const botoes = ehBasico(recurso) ? BOTOES[recurso] : BOTOES.STA;
   const classe = ehBasico(recurso) ? `recurso-${recurso.toLowerCase()}` : 'recurso-personalizado';
   const pct = max > 0 ? Math.max(0, Math.min(100, (atual / max) * 100)) : 0;
-  const idInput = `qtd-${recurso}`;
+  const idInput = `${idPrefixo}-${recurso}`;
 
   const enviar = (tipo: TipoMudanca) => {
     const valor = Number(texto.replace(',', '.'));

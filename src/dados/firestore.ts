@@ -17,6 +17,7 @@ import {
   getDocFromCache,
   getDocs,
   getDocsFromCache,
+  onSnapshot,
   query,
   setDoc,
   waitForPendingWrites,
@@ -195,6 +196,23 @@ export class RepositorioFirestore implements RepositorioFichas {
   salvar(ficha: Ficha): Promise<void> {
     const ref = doc(this.db, COLECOES.fichas, ficha.id);
     return this.escrever(ref, () => setDoc(ref, ficha));
+  }
+
+  /**
+   * Ao vivo: o Firestore avisa a cada mudança (a própria escrita local chega na hora; a de outro
+   * aparelho, assim que o servidor repassa). Sem rede, entrega o que está no cache.
+   */
+  observarFichas(ouvinte: (fichas: Ficha[]) => void, erro?: (e: unknown) => void): () => void {
+    const col = collection(this.db, COLECOES.fichas);
+    const q = this.opcoes.donoUid ? query(col, where('donoUid', '==', this.opcoes.donoUid)) : col;
+    return onSnapshot(
+      q,
+      (snap) => {
+        const fichas = snap.docs.map((d) => d.data() as Ficha);
+        ouvinte(fichas.sort((a, b) => b.atualizadoEm - a.atualizadoEm));
+      },
+      (e) => erro?.(e),
+    );
   }
 
   async excluir(id: string): Promise<void> {

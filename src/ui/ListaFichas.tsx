@@ -142,6 +142,9 @@ export function ListaFichas({ repo, navegar, aviso }: Props) {
               aria-label="Importar backup (JSON)"
             />
           </label>
+          <a href="#/board" class="btn btn-secundario botao-arquivo">
+            Board do Mestre
+          </a>
           <a href="#/jogadores" class="btn btn-secundario botao-arquivo">
             Jogadores
           </a>

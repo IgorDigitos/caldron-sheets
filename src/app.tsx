@@ -4,6 +4,7 @@ import type { EstadoSync } from './dados/firestore';
 import type { RepositorioMesa } from './dados/mesa';
 import type { RepositorioFichas } from './dados/repositorio';
 import type { Aba } from './ui/comum';
+import { BoardTela } from './ui/BoardTela';
 import { FichaTela } from './ui/FichaTela';
 import { InventarioTela } from './ui/InventarioTela';
 import { JogadoresTela } from './ui/JogadoresTela';
@@ -46,8 +47,11 @@ function useRota(): [string, (r: string) => void] {
   return [rota, (r) => (location.hash = r)];
 }
 
-export function rotaParaTela(rota: string): { tela: 'lista' | 'jogadores' | 'recursos' | 'mesa-geral' } | { tela: Aba; id: string } {
+export function rotaParaTela(
+  rota: string,
+): { tela: 'lista' | 'jogadores' | 'recursos' | 'mesa-geral' | 'board' } | { tela: Aba; id: string } {
   if (rota === '/jogadores') return { tela: 'jogadores' };
+  if (rota === '/board') return { tela: 'board' };
   if (rota === '/recursos') return { tela: 'recursos' };
   if (rota === '/mesa') return { tela: 'mesa-geral' };
   const m = /^\/ficha\/([\w-]+)(?:\/(inventario|skills|journal|mesa))?$/.exec(rota);
@@ -122,6 +126,8 @@ export function App({ repo, mesa, sync, onLimparErroSync, usuario, onSair, aviso
       {r.tela === 'mesa-geral' && <MesaTela repo={repo} mesa={mesa} />}
       {r.tela === 'recursos' &&
         (sessao.papel === 'mestre' ? <RecursosTela repo={repo} /> : <ListaFichas repo={repo} navegar={navegar} />)}
+      {r.tela === 'board' &&
+        (sessao.papel === 'mestre' ? <BoardTela repo={repo} /> : <ListaFichas repo={repo} navegar={navegar} />)}
       {r.tela === 'jogadores' &&
         (sessao.papel === 'mestre' ? <JogadoresTela /> : <ListaFichas repo={repo} navegar={navegar} />)}
     </ContextoSessao.Provider>

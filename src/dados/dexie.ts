@@ -1,4 +1,4 @@
-import Dexie, { type EntityTable } from 'dexie';
+import Dexie, { liveQuery, type EntityTable } from 'dexie';
 import type { Ficha } from '../dominio/ficha';
 import { carteiraVazia, type Item } from '../dominio/inventario';
 import type { EntradaJournal } from '../dominio/journal';
@@ -86,6 +86,14 @@ export class RepositorioDexie implements RepositorioFichas {
 
   async salvar(ficha: Ficha): Promise<void> {
     await this.db.fichas.put(ficha);
+  }
+
+  observarFichas(ouvinte: (fichas: Ficha[]) => void, erro?: (e: unknown) => void): () => void {
+    const assinatura = liveQuery(() => this.db.fichas.orderBy('atualizadoEm').reverse().toArray()).subscribe({
+      next: ouvinte,
+      error: (e: unknown) => erro?.(e),
+    });
+    return () => assinatura.unsubscribe();
   }
 
   async excluir(id: string): Promise<void> {
