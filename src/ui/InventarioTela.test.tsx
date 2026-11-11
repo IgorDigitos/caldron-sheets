@@ -169,7 +169,7 @@ describe('InventarioTela', () => {
     const { repo, ficha } = await montar();
     const carteira = screen.getByRole('region', { name: 'Carteira' });
     fireEvent.change(within(carteira).getByLabelText(/^Ouro\b/), { target: { value: '2' } });
-    fireEvent.change(within(carteira).getByLabelText(/^Bronzeb/), { target: { value: '9' } });
+    fireEvent.change(within(carteira).getByLabelText(/^Bronze\b/), { target: { value: '9' } });
     fireEvent.change(within(carteira).getByLabelText("Moeda d'Alma"), { target: { value: '3' } });
     expect(screen.getByTestId('total-carteira').textContent).toBe('2.090');
     expect(screen.getByTestId('total-alma').textContent).toBe("+ 3 Moedas d'Alma");
