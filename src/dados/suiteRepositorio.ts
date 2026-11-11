@@ -1,7 +1,7 @@
 // Suíte única para toda implementação de RepositorioFichas (Dexie, memória, Firestore).
 // Cada teste chama `criar()` e espera um repositório VAZIO.
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { aplicar, criarFicha } from '../dominio/ficha';
 import { criarItem } from '../dominio/inventario';
 import { criarEntrada } from '../dominio/journal';
@@ -50,6 +50,31 @@ export function testarRepositorio(nome: string, criar: () => RepositorioFichas |
         classe: 'Mago',
         atualizadoEm: 1000,
       });
+    });
+
+    it('observarFichas: entrega a lista ao começar, a cada mudança, e para quando mandar', async () => {
+      const repo = await criar();
+      const f = criarFicha({ nome: 'Skar', ...SKAR });
+      await repo.salvar(f);
+      const vistas: string[] = [];
+      const parar = repo.observarFichas((l) => vistas.push(l.map((x) => `${x.nome}:${x.atuais.VIDA}`).sort().join(',')));
+      await vi.waitFor(() => expect(vistas.at(-1)).toBe('Skar:45'));
+
+      await repo.salvar(aplicar(f, 'VIDA', 'dano', 5));
+      await vi.waitFor(() => expect(vistas.at(-1)).toBe('Skar:40'));
+
+      const ogro = criarFicha({ nome: 'Ogro' }, f.criadoEm + 1);
+      await repo.salvar(ogro);
+      await vi.waitFor(() => expect(vistas.at(-1)).toBe('Ogro:12,Skar:40'));
+
+      await repo.excluir(ogro.id);
+      await vi.waitFor(() => expect(vistas.at(-1)).toBe('Skar:40'));
+
+      parar();
+      const antes = vistas.length;
+      await repo.salvar(aplicar(f, 'VIDA', 'dano', 10));
+      await new Promise((r) => setTimeout(r, 50));
+      expect(vistas.length).toBe(antes);
     });
 
     it('exclui', async () => {

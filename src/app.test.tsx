@@ -69,6 +69,19 @@ describe('App', () => {
     expect(await screen.findByText('Nenhuma entrada ainda.')).toBeTruthy();
   });
 
+  it('#/board abre o board para o Mestre; jogador cai na lista', async () => {
+    const repo = new RepositorioMemoria();
+    await repo.salvar(criarFicha({ nome: 'Skar' }));
+    expect(rotaParaTela('/board')).toEqual({ tela: 'board' });
+    location.hash = '#/board';
+    const r = render(<App repo={repo} />);
+    expect(await screen.findByRole('heading', { name: 'Board do Mestre' })).toBeTruthy();
+    r.unmount();
+    render(<App repo={repo} sessao={{ papel: 'jogador', uid: 'j', jogadores: [] }} />);
+    expect(await screen.findByRole('heading', { name: 'Caldron Sheets' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Board do Mestre' })).toBeNull();
+  });
+
   it('ficha inexistente mostra aviso', async () => {
     location.hash = '/ficha/nao-existe';
     render(<App repo={new RepositorioMemoria()} />);

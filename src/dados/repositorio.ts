@@ -32,6 +32,12 @@ export interface RepositorioFichas {
   salvar(ficha: Ficha): Promise<void>;
   /** Exclui a ficha e tudo dela (itens, imagens, journal, skills). */
   excluir(id: string): Promise<void>;
+  /**
+   * Acompanha ao vivo todas as fichas que este repositório enxerga (board do Mestre). Chama `ouvinte`
+   * com a lista completa logo ao começar e a cada mudança, inclusive vinda de outro aparelho.
+   * Devolve o "parar".
+   */
+  observarFichas(ouvinte: (fichas: Ficha[]) => void, erro?: (e: unknown) => void): () => void;
 
   listarItens(fichaId: string): Promise<Item[]>;
   salvarItem(item: Item): Promise<void>;

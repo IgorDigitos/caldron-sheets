@@ -18,6 +18,7 @@ export class RepositorioMemoria implements RepositorioFichas {
   private readonly journal = new Map<string, EntradaJournal>();
   private readonly skills = new Map<string, Skill>();
   private readonly recursos = new Map<string, DefRecurso>();
+  private readonly ouvintesFichas = new Set<(fichas: Ficha[]) => void>();
 
   async listar(): Promise<ResumoFicha[]> {
     return [...this.fichas.values()].sort((a, b) => b.atualizadoEm - a.atualizadoEm).map(resumir);
@@ -30,6 +31,7 @@ export class RepositorioMemoria implements RepositorioFichas {
 
   async salvar(ficha: Ficha): Promise<void> {
     this.fichas.set(ficha.id, copia(ficha));
+    this.avisarFichas();
   }
 
   async excluir(id: string): Promise<void> {
@@ -37,6 +39,23 @@ export class RepositorioMemoria implements RepositorioFichas {
     for (const m of [this.itens, this.imagens, this.journal, this.skills] as Map<string, { fichaId: string }>[]) {
       for (const [k, v] of m) if (v.fichaId === id) m.delete(k);
     }
+    this.avisarFichas();
+  }
+
+  observarFichas(ouvinte: (fichas: Ficha[]) => void): () => void {
+    this.ouvintesFichas.add(ouvinte);
+    ouvinte(this.todasFichas());
+    return () => this.ouvintesFichas.delete(ouvinte);
+  }
+
+  private todasFichas(): Ficha[] {
+    return [...this.fichas.values()].sort((a, b) => b.atualizadoEm - a.atualizadoEm).map(copia);
+  }
+
+  private avisarFichas(): void {
+    if (this.ouvintesFichas.size === 0) return;
+    const lista = this.todasFichas();
+    this.ouvintesFichas.forEach((o) => o(lista));
   }
 
   async listarItens(fichaId: string): Promise<Item[]> {

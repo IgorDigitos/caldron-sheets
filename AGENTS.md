@@ -161,6 +161,17 @@ Dúvida sobre fórmula do Caldronis: pergunte ao Mestre, não adivinhe.
 - O login é guardado por endereço: `caldron-sheets.firebaseapp.com` redireciona para o `web.app`
   (`src/plataforma/endereco.ts`). Links de prévia não redirecionam e têm login próprio.
 
+## Board do Mestre
+
+- Tela `#/board` (só Mestre; jogador cai na lista), link "Board do Mestre" na lista. Fichas lado a lado no
+  PC (`.grade-board`, auto-fill 320px): recursos com dano/cura (`BarraRecurso` com `idPrefixo`), atributos
+  atuais, Def. Física/Mágica totais + PA/Deslocamento/Contrabalanço/Corpo/Mente e as últimas 4 linhas do
+  histórico. **Sem** rolagem, descanso, extra ou edição de atributo (isso é na ficha).
+- **Ao vivo** por `RepositorioFichas.observarFichas(ouvinte, erro)`: Firestore `onSnapshot` na coleção,
+  Dexie `liveQuery`, memória avisa em `salvar/excluir`. A suíte `suiteRepositorio.ts` cobre as três.
+- Quais fichas aparecem: `src/dominio/board.ts` (`lerSelecao/gravarSelecao` no localStorage deste
+  aparelho; `null` = todas; ordem alfabética). Itens (defesa total) são lidos ao montar, não ao vivo.
+
 ## Skills (Magias, Técnicas, Habilidades, Talentos)
 
 - `src/dominio/skills.ts` — colunas da planilha (nome, ATK/MOD, PAs, gastos em texto, descrição) mais
